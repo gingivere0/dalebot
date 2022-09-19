@@ -17,13 +17,12 @@ url = "http://127.0.0.1:7860/api/predict"
 f = open('data.json')
 postObj = json.load(f)
 
-outputFile = open("output.txt",'a')
 helpstring = "Hi! For a simple request, you can type something like \"!dale firetruck\"\n" \
-             "More complicated requests have the following options:\n" \
+             "More complicated requests have the following options:\n\n" \
              "conform=1-30, describes how much the AI should conform to the prompt. Defaults to 10\n" \
              "num=1-16, describes how many pictures to generate. Defaults to 1\n" \
              "samples=1-100, describes how many times the ai should run over the picture. Defaults to 20\n" \
-             "res=1-1600x1-1600, describes the resolution of the image. Defaults to 512x512\n" \
+             "res=1-1600x1-1600, describes the resolution of the image. Defaults to 512x512\n\n" \
              "Higher numbers for all of these mean longer generation times.\n" \
              "Example of a complicated request:\n" \
              "!dale firetruck conform=20 num=4 samples=35 res=600x700"
@@ -82,7 +81,6 @@ async def on_message(message):
         postObj['data'][0] = prompt
         print(postObj)
         response = requests.post(url, json=postObj)
-        outputFile.write(response.json()['data'][0][0][22:])
         imgdata = base64.b64decode(response.json()['data'][0][0][22:])
         filename = "testimg.png"
         with open(filename, "wb") as f:
