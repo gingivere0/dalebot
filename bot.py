@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import requests
 import json
 import base64
+import urllib.request
 
 
 BOT_NAME = "DaleBot"
@@ -14,18 +15,18 @@ DISCORD_TOKEN = os.getenv("TOKEN")
 bot = discord.Client(intents=discord.Intents.all())
 
 url = "http://127.0.0.1:7860/api/predict"
-f = open('data.json')
-postObj = json.load(f)
+
 
 helpstring = "Hi! For a simple request, you can type something like \"!dale firetruck\"\n" \
              "More complicated requests have the following options:\n\n" \
              "conform=1-30, describes how much the AI should conform to the prompt. Defaults to 10\n" \
              "num=1-16, describes how many pictures to generate. Defaults to 1\n" \
              "samples=1-100, describes how many times the ai should run over the picture. Defaults to 20\n" \
-             "res=1-1600x1-1600, describes the resolution of the image. Defaults to 512x512\n\n" \
-             "Higher numbers for all of these mean longer generation times.\n" \
+             "res=1-1600x1-1600, describes the resolution of the image. Defaults to 512x512\n" \
+             "dn=0-1, describes the denoising amount when generating based off an existing image. Higher means more changes. Defaults to 0.65\n\n" \
+             "Higher numbers for num and samples mean longer generation times.\n" \
              "Example of a complicated request:\n" \
-             "!dale firetruck conform=20 num=4 samples=35 res=600x700"
+             "!dale firetruck conform=20 num=4 samples=35 res=832x256"
 
 @bot.event
 async def on_ready():
@@ -33,11 +34,11 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    postObj['data'][4] = 20
-    postObj['data'][8] = 1
-    postObj['data'][10] = 10
-    postObj['data'][16] = 512
-    postObj['data'][17] = 512
+    # postObj['data'][4] = 20
+    # postObj['data'][8] = 1
+    # postObj['data'][10] = 10
+    # postObj['data'][16] = 512
+    # postObj['data'][17] = 512
 
     print('message received: '+f'{message.content}')
     if message.author == bot.user:
@@ -47,39 +48,70 @@ async def on_message(message):
         await message.add_reaction("🔄")
         prompt = message.content[6:]
         words = prompt.split()
+        postObj=""
+        sampleind=4
+        numind=8
+        conformind=10
+        resxind=16
+        resyind=17
+        denoiseBool=False
+        if len(message.attachments)>0:
+            f = open('imgdata.json')
+            postObj = json.load(f)
+            f.close()
+            with open("output.png","wb") as imgfile:
+                imgfile.write(requests.get(message.attachments[0].url).content)
+            encodedattachment = base64.b64encode(open("output.png", "rb").read())
+            if os.path.exists("output.txt"):
+                os.remove("output.txt")
+            with open("output.txt", "wb") as textfile:
+                textfile.write(encodedattachment)
+            with open("output.txt", "r") as textfile:
+                postObj['data'][4] = "data:image/png;base64,"+textfile.read()
+            sampleind=8
+            numind=15
+            conformind=17
+            resxind=24
+            resyind=25
+            denoiseBool=True
+
+        else:
+            f = open('data.json')
+            postObj = json.load(f)
+            f.close()
+
         for word in words:
             if 'samples=' in word:
                 samples = word.split("=")[1]
-                if (samples.isnumeric() and int(samples) <= 100):
-                    postObj['data'][4] = int(samples)
+                if samples.isnumeric() and int(samples) <= 100:
+                    postObj['data'][sampleind] = int(samples)
             if 'num=' in word:
                 numpics = word.split("=")[1]
-                if(numpics.isnumeric() and int(numpics)<17):
-                    postObj['data'][8] = int(numpics)
+                if numpics.isnumeric() and int(numpics)<17:
+                    postObj['data'][numind] = int(numpics)
                 prompt.replace(word,"")
             if 'conform=' in word:
                 conform = word.split("=")[1]
-                if (conform.isnumeric() and int(conform) <= 100):
-                    postObj['data'][10] = int(conform)
+                if conform.isnumeric() and int(conform) <= 100:
+                    postObj['data'][conformind] = int(conform)
                 prompt.replace(word, "")
             if 'res=' in word:
                 resolution = word.split("=")[1]
-                resx = resolution.split("x")[0]
-                resy = resolution.split("x")[1]
-                if (resx.isnumeric() and resy.isnumeric() and int(resx)<=1600 and int(resy)<=1600):
-                    postObj['data'][16] = int(resx)
-                    postObj['data'][17] = int(resy)
+                resx = resolution.split("x")[1]
+                resy = resolution.split("x")[0]
+                if resx.isnumeric() and resy.isnumeric() and int(resx)<=1600 and int(resy)<=1600:
+                    postObj['data'][resxind] = int(resx)
+                    postObj['data'][resyind] = int(resy)
                 else:
                     await message.channel.send("I am from the south and I'm really fucking stupid so I can't render images bigger than 1600x1600. Try using the upscaler (which doesn't exist yet)")
                 prompt.replace(word, "")
-        # if words[-1].isnumeric():
-        #     if(int(words[-1])<17):
-        #         postObj['data'][8] = int(words[-1])
-        #     prompt = prompt.rsplit(' ',1)[0]
-        print(postObj['data'][8])
-        print(prompt)
+            if 'dn=' in word:
+                dn = word.split("=")[1]
+                if float(dn) <= 1 and denoiseBool:
+                    postObj['data'][18]=float(dn)
+                prompt.replace(word,"")
+
         postObj['data'][0] = prompt
-        print(postObj)
         response = requests.post(url, json=postObj)
         imgdata = base64.b64decode(response.json()['data'][0][0][22:])
         filename = "testimg.png"
