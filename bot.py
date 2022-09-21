@@ -23,10 +23,13 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "num=1-16, describes how many pictures to generate. Defaults to 1\n" \
              "samples=1-100, describes how many times the ai should run over the picture. Defaults to 20\n" \
              "res=1-1600x1-1600, describes the resolution of the image. Defaults to 512x512\n" \
-             "dn=0-1, describes the denoising amount when generating based off an existing image. Higher means more changes. Defaults to 0.65\n\n" \
+             "dn=0-1, describes the denoising amount when generating based off an existing image. Higher means more changes. Defaults to 0.65\n" \
+             "seed=0-very large number, describes the seed from which to begin generation. the same prompt with the same seed will generate the same image.\n" \
+             "\tseed is useful for making slight modifications to an image that you think is close to what you want\n" \
+             "{exclude this}, use curly braces to define words that you want the AI to exclude during generation\n\n" \
              "Higher numbers for num and samples mean longer generation times.\n" \
              "Example of a complicated request:\n" \
-             "!dale firetruck conform=20 num=4 samples=35 res=832x256"
+             "!dale firetruck conform=20 num=4 samples=35 res=832x256 {birds}"
 
 @bot.event
 async def on_ready():
@@ -145,8 +148,15 @@ async def on_message(message):
                 postObj['data'][seedind] = int(seed)
                 prompt = prompt.replace(word, "")
 
+        if '{' in prompt and '}' in prompt and prompt.index('}') > prompt.index('{'):
+            exclude = prompt.split('{',1)[1].split('}',1)[0]
+            print(exclude)
+            prompt=prompt.replace('{'+exclude+'}',"")
+            postObj['data'][1] = exclude
         print("prompt: "+prompt)
         postObj['data'][0] = prompt
+
+        print("post object: "+json.dumps(postObj))
         response = requests.post(url, json=postObj)
         print("seed:" +json.dumps(response.json()).split("Seed:",1)[-1].split()[0][:-1])
         imgdata = base64.b64decode(response.json()['data'][0][0][22:])
@@ -155,7 +165,7 @@ async def on_message(message):
             f.write(imgdata)
         with open(filename, 'rb') as f:
             picture = discord.File(f)
-            await message.reply("Seed: "+json.dumps(response.json()).split("Seed:",1)[-1].split()[0][:-1], file=picture)
+            await message.reply("seed="+json.dumps(response.json()).split("Seed:",1)[-1].split()[0][:-1], file=picture)
         await message.add_reaction("🔄")
         await message.add_reaction("✅")
         if "help" in message.content[6:].split()[0]:
