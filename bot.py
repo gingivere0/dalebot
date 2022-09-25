@@ -36,16 +36,18 @@ prompt_no_args = ""
 original_prompt = ""
 words = ""
 postObj = None
+promptind = 0
 sampleind = 4
 numind = 8
 conformind = 10
 resxind = 17
 resyind = 16
 seedind = 11
-dataind = 0
+dataind = 5
 numloops = ""
 gotloops = False
 denoiseBool = False
+reply_string = ""
 
 
 @bot.event
@@ -54,8 +56,26 @@ async def on_ready():
 
 
 @bot.event
+async def on_reaction_add(reaction, user):
+    if user == bot.user:
+        return
+    if reaction.message.author == bot.user:
+        if reaction.emoji == "🎲":
+            await reaction.message.add_reaction("🔄")
+            parent_message = await get_parent(reaction.message)
+            await on_message(parent_message)
+            await reaction.message.remove_reaction("🔄", bot.user)
+            await reaction.message.add_reaction("✅")
+
+
+async def get_parent(message):
+    return await message.channel.fetch_message(message.reference.message_id)
+
+
+@bot.event
 async def on_message(message):
-    global postObj
+    global postObj, reply_string
+
     # postObj['data'][4] = 20
     # postObj['data'][8] = 1
     # postObj['data'][10] = 10
@@ -66,6 +86,13 @@ async def on_message(message):
 
     # ignore messages from the bot
     if message.author == bot.user:
+        return
+
+    if message.reference is not None and message.content[0:5] == "!dale":
+        reply_string = " " + message.content[6:] + " " + reply_string
+        grandparent = await get_parent(await get_parent(message))
+        print("grandparent = "+grandparent.content)
+        await on_message(grandparent)
         return
 
     if message.content[0:5] == "!dale":
@@ -88,16 +115,18 @@ async def on_message(message):
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("✅")
 
-        if "help" in message.content[6:].split()[0]:
+        if len(message.content[6:].split()) > 0 and "help" in message.content[6:].split()[0]:
             await message.channel.send(helpstring)
 
 
 # reset default variables for a normal word prompt
 def setup(message):
-    global prompt_no_args, original_prompt, words, postObj, sampleind, numind, conformind, resxind, resyind, seedind, denoiseBool, numloops
-    original_prompt = message.content[6:]
-    prompt_no_args = message.content[6:]
+    global prompt_no_args, original_prompt, words, postObj, promptind, sampleind, numind, conformind, resxind, resyind, seedind, denoiseBool, numloops, reply_string
+    original_prompt = message.content[6:] + reply_string
+    prompt_no_args = message.content[6:] + reply_string
+    reply_string = ""
     words = original_prompt.split()
+    promptind = 0
     sampleind = 4
     numind = 8
     conformind = 10
@@ -110,16 +139,9 @@ def setup(message):
 
 # attachments can either be upscales or part of a prompt
 async def messageattachments(message):
-    global prompt_no_args, words, postObj, sampleind, numind, conformind, resxind, resyind, seedind, denoiseBool, numloops
+    global words
 
-    # write attachment to file as image, then read image from file and write to as base64encoded bytes
-    with open("output.png", "wb") as imgfile:
-        imgfile.write(requests.get(message.attachments[0].url).content)
-    encodedattachment = base64.b64encode(open("output.png", "rb").read())
-    if os.path.exists("output.txt"):
-        os.remove("output.txt")
-    with open("output.txt", "wb") as textfile:
-        textfile.write(encodedattachment)
+    convertpng2txtfile(requests.get(message.attachments[0].url).content)
 
     if len(words) >= 1 and words[0] == "upscale":
         await upscale(message)
@@ -128,23 +150,41 @@ async def messageattachments(message):
     attachedjsonframework()
 
 
+# takes imgdata as bytes, writes to a png, reads png, writes string to txtfile.
+# there's probably a better way to do this.
+def convertpng2txtfile(imgdata):
+    # write attachment to file as image, then read image from file and write to as base64encoded bytes
+    if os.path.exists("output.png"):
+        os.remove("output.png")
+    with open("output.png", "wb") as imgfile:
+        imgfile.write(imgdata)
+    encodedattachment = base64.b64encode(open("output.png", "rb").read())
+    if os.path.exists("output.txt"):
+        os.remove("output.txt")
+    with open("output.txt", "wb") as textfile:
+        textfile.write(encodedattachment)
+
+
+# the json object for using an image as a prompt is different from the json object for using just text.
+# this method is setting up the json object for when there is an image as a prompt
 def attachedjsonframework():
-    global prompt_no_args, words, postObj, sampleind, numind, conformind, resxind, resyind, seedind, denoiseBool, numloops
+    global words, postObj, promptind, sampleind, numind, conformind, resxind, resyind, seedind, denoiseBool, numloops
     # open postObj template for image prompts
     f = open('imgdata.json')
     postObj = json.load(f)
     f.close()
 
     with open("output.txt", "r") as textfile:
-        postObj['data'][4] = "data:image/png;base64," + textfile.read()
+        postObj['data'][dataind] = "data:image/png;base64," + textfile.read()
 
     # assign variable indices for image prompt json format
-    sampleind = 8
-    numind = 15
-    conformind = 17
-    resxind = 25
-    resyind = 24
-    seedind = 19
+    promptind = 1
+    sampleind = 10
+    numind = 16
+    conformind = 18
+    resxind = 27
+    resyind = 26
+    seedind = 20
     denoiseBool = True
 
     # get the resolution of the original image, make the new image have the same resolution, adjusted to closest 64
@@ -154,6 +194,7 @@ def attachedjsonframework():
     postObj['data'][resyind] = nearest64(img.size[1])
 
 
+#
 async def wordparse(message):
     global words, original_prompt, prompt_no_args, numloops, postObj, gotloops
 
@@ -204,14 +245,14 @@ async def wordparse(message):
             exclude = original_prompt.split('{', 1)[1].split('}', 1)[0]
             print(exclude)
             prompt_no_args = prompt_no_args.replace('{' + exclude + '}', "")
-            postObj['data'][1] = exclude
+            postObj['data'][2] = exclude
 
         if 'loops=' in word:
             numloops = word.split("=")[1]
             prompt_no_args = prompt_no_args.replace(word, "")
             gotloops = True
 
-    postObj['data'][0] = prompt_no_args
+    postObj['data'][promptind] = prompt_no_args
     print(prompt_no_args)
 
 
@@ -224,7 +265,7 @@ async def upscale(message):
     f.close()
 
     with open("output.txt", "r") as textfile:
-        postObj['data'][0] = "data:image/png;base64," + textfile.read()
+        postObj['data'][promptind] = "data:image/png;base64," + textfile.read()
 
     # upscale up to 10 times if an upscale factor is included
     if len(words) > 1 and words[1].isnumeric() and float(words[1]) <= 10:
@@ -237,7 +278,7 @@ async def upscale(message):
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
 async def postresponse(message):
-    global postObj
+    global postObj, numloops
     response = requests.post(url, json=postObj)
     responsestr = json.dumps(response.json())
     seed = ""
@@ -251,21 +292,18 @@ async def postresponse(message):
 
     # loops an image back into the AI
     if numloops.isnumeric() and int(numloops) > 1:
+        if int(numloops) > 15:
+            numloops = "15"
         for x in range(0, int(numloops)-1):
+            # if the original message doesn't have an attachment, we have to run the setup on the postObj
             if len(message.attachments) == 0:
                 message.attachments = [1]
-                with open("output.png", "wb") as imgfile:
-                    imgfile.write(imgdata)
-                encodedattachment = base64.b64encode(open("output.png", "rb").read())
-                if os.path.exists("output.txt"):
-                    os.remove("output.txt")
-                with open("output.txt", "wb") as textfile:
-                    textfile.write(encodedattachment)
+                convertpng2txtfile(imgdata)
                 attachedjsonframework()
                 await wordparse(message)
             with open("output.txt", "r") as textfile:
                 postObj['data'][4] = "data:image/png;base64," + textfile.read()
-            postObj['data'][0] = prompt_no_args
+            postObj['data'][promptind] = prompt_no_args
             with open("testout.txt", "w") as filefile:
                 filefile.write(json.dumps(postObj))
             response = requests.post(url, json=postObj)
@@ -282,7 +320,7 @@ async def postresponse(message):
     with open(filename, 'rb') as f:
         picture = discord.File(f)
         if len(seed) > 0:
-            await message.reply("seed=" + seed, file=picture)
+            await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
         else:
             await message.reply(file=picture)
 
