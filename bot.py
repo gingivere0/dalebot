@@ -116,13 +116,14 @@ async def on_message(message):
     if message.content[0:5] == "!dale":
         await message.add_reaction("🔄")
 
+        await bot.change_presence(activity=discord.Game('with myself: '+message.content))
+
         setup(message)
 
         is_upscale = False
 
         if len(message.attachments) > 0:
             is_upscale = await messageattachments(message)
-
 
         else:
             f = open('data.json')
@@ -135,6 +136,8 @@ async def on_message(message):
 
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("✅")
+
+        await bot.change_presence(activity=None)
 
         if len(message.content[6:].split()) > 0 and "help" in message.content[6:].split()[0]:
             await message.channel.send(helpstring)
@@ -259,7 +262,7 @@ async def wordparse(message):
         if 'dn=' in word:
             dn = word.split("=")[1]
             if float(dn) <= 1 and denoiseBool:
-                postObj['data'][18] = float(dn)
+                postObj['data'][19] = float(dn)
             prompt_no_args = prompt_no_args.replace(word, "")
 
         if 'seed=' in word:
