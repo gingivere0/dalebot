@@ -1,7 +1,8 @@
 {
-  "fn_index": 35,
+  "fn_index": 37,
   "data": [
-    "upscaleimgdataplaceholder",
+    0,
+    "",
     null,
     0,
     0,
@@ -9,7 +10,10 @@
     2,
     "Real-ESRGAN 4x plus",
     "None",
-    1
+    1,
+    [],
+    "",
+    ""
   ],
-  "session_hash": "aje7xvyjn2v"
+  "session_hash": "yufxmjbb2"
 }

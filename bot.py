@@ -1,3 +1,5 @@
+import sys
+
 import discord
 import os
 from dotenv import load_dotenv
@@ -29,7 +31,9 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "\tseed is useful for making slight modifications to an image that you think is close to what you want\n" \
              "{exclude this}, use curly braces to define words that you want the AI to exclude during generation\n\n" \
              "Higher numbers for num and samples mean longer generation times.\n" \
-             "Example of a complicated request:\n" \
+             "Click the die emote on my messages to reroll the same prompt with a different seed.\n" \
+             "Respond to my messages with \"!dale extra words\" to include extra words in a previous prompt.\n" \
+             "Example of a complicated request (will take a couple minutes to reply):\n" \
              "!dale firetruck conform=20 num=4 samples=35 res=832x256 {birds}"
 
 prompt_no_args = ""
@@ -48,6 +52,7 @@ numloops = ""
 gotloops = False
 denoiseBool = False
 reply_string = ""
+original_message_id = -1
 
 
 @bot.event
@@ -72,9 +77,19 @@ async def get_parent(message):
     return await message.channel.fetch_message(message.reference.message_id)
 
 
+async def get_all_parent_contents(message):
+    global reply_string
+
+    if message.content[0:5] == "!dale":
+        reply_string = " " + message.content[6:] + " " + reply_string
+
+    if message.reference is not None:
+        await get_all_parent_contents(await get_parent(message))
+
+
 @bot.event
 async def on_message(message):
-    global postObj, reply_string
+    global postObj, reply_string, original_message_id
 
     # postObj['data'][4] = 20
     # postObj['data'][8] = 1
@@ -82,35 +97,41 @@ async def on_message(message):
     # postObj['data'][16] = 512
     # postObj['data'][17] = 512
 
-    print('message received: ' + f'{message.content}')
+    print(f'Message received: {message.content}')
+
+    # if message.reference is not None and message.content[0:5] == "!dale":
+    #     reply_string = " " + message.content[6:] + " " + reply_string
+    #     grandparent = await get_parent(await get_parent(message))
+    #     print("grandparent = "+grandparent.content)
+    #     await on_message(grandparent)
+    #     return
 
     # ignore messages from the bot
     if message.author == bot.user:
         return
 
-    if message.reference is not None and message.content[0:5] == "!dale":
-        reply_string = " " + message.content[6:] + " " + reply_string
-        grandparent = await get_parent(await get_parent(message))
-        print("grandparent = "+grandparent.content)
-        await on_message(grandparent)
-        return
+    if message.reference is not None:
+        await get_all_parent_contents(await get_parent(message))
 
     if message.content[0:5] == "!dale":
         await message.add_reaction("🔄")
 
         setup(message)
 
+        is_upscale = False
+
         if len(message.attachments) > 0:
-            await messageattachments(message)
+            is_upscale = await messageattachments(message)
+
 
         else:
             f = open('data.json')
             postObj = json.load(f)
             f.close()
 
-        await wordparse(message)
-
-        await postresponse(message)
+        if not is_upscale:
+            await wordparse(message)
+            await postresponse(message)
 
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("✅")
@@ -122,8 +143,8 @@ async def on_message(message):
 # reset default variables for a normal word prompt
 def setup(message):
     global prompt_no_args, original_prompt, words, postObj, promptind, sampleind, numind, conformind, resxind, resyind, seedind, denoiseBool, numloops, reply_string
-    original_prompt = message.content[6:] + reply_string
-    prompt_no_args = message.content[6:] + reply_string
+    original_prompt = reply_string + message.content[6:]
+    prompt_no_args = reply_string + message.content[6:]
     reply_string = ""
     words = original_prompt.split()
     promptind = 0
@@ -138,6 +159,7 @@ def setup(message):
 
 
 # attachments can either be upscales or part of a prompt
+# returns if is an upscale
 async def messageattachments(message):
     global words
 
@@ -145,9 +167,11 @@ async def messageattachments(message):
 
     if len(words) >= 1 and words[0] == "upscale":
         await upscale(message)
-        return
+        return True
 
     attachedjsonframework()
+
+    return False
 
 
 # takes imgdata as bytes, writes to a png, reads png, writes string to txtfile.
@@ -174,11 +198,13 @@ def attachedjsonframework():
     postObj = json.load(f)
     f.close()
 
+    promptind = 1
+
     with open("output.txt", "r") as textfile:
         postObj['data'][dataind] = "data:image/png;base64," + textfile.read()
 
     # assign variable indices for image prompt json format
-    promptind = 1
+
     sampleind = 10
     numind = 16
     conformind = 18
@@ -238,12 +264,12 @@ async def wordparse(message):
 
         if 'seed=' in word:
             seed = word.split("=")[1]
-            postObj['data'][seedind] = int(seed)
+
+            postObj['data'][seedind] = int(seed) if int(seed)<sys.maxsize else sys.maxsize-1
             prompt_no_args = prompt_no_args.replace(word, "")
 
         if '{' in prompt_no_args and '}' in prompt_no_args and prompt_no_args.index('}') > prompt_no_args.index('{'):
             exclude = original_prompt.split('{', 1)[1].split('}', 1)[0]
-            print(exclude)
             prompt_no_args = prompt_no_args.replace('{' + exclude + '}', "")
             postObj['data'][2] = exclude
 
@@ -253,7 +279,6 @@ async def wordparse(message):
             gotloops = True
 
     postObj['data'][promptind] = prompt_no_args
-    print(prompt_no_args)
 
 
 # asdf
@@ -265,11 +290,13 @@ async def upscale(message):
     f.close()
 
     with open("output.txt", "r") as textfile:
-        postObj['data'][promptind] = "data:image/png;base64," + textfile.read()
+        postObj['data'][1] = "data:image/png;base64," + textfile.read()
 
+    with open("testout.txt", "w") as filefile:
+        filefile.write(json.dumps(postObj))
     # upscale up to 10 times if an upscale factor is included
     if len(words) > 1 and words[1].isnumeric() and float(words[1]) <= 10:
-        postObj['data'][5] = float(words[1])
+        postObj['data'][6] = int(words[1])
 
     await postresponse(message)
 
@@ -284,7 +311,6 @@ async def postresponse(message):
     seed = ""
     if "Seed:" in responsestr:
         seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
-        print("seed:" + seed)
     imgdata = base64.b64decode(response.json()['data'][0][0][22:])
     filename = "testimg.png"
     with open(filename, "wb") as f:
@@ -304,14 +330,11 @@ async def postresponse(message):
             with open("output.txt", "r") as textfile:
                 postObj['data'][4] = "data:image/png;base64," + textfile.read()
             postObj['data'][promptind] = prompt_no_args
-            with open("testout.txt", "w") as filefile:
-                filefile.write(json.dumps(postObj))
             response = requests.post(url, json=postObj)
             responsestr = json.dumps(response.json())
             seed = ""
             if "Seed:" in responsestr:
                 seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
-                print("seed:" + seed)
             imgdata = base64.b64decode(response.json()['data'][0][0][22:])
             filename = "testimg.png"
             with open(filename, "wb") as f:
