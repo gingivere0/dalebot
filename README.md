@@ -9,7 +9,7 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 - img2img
 - upscale
 - specify the seed
-- set conformity
+- set prompt conformity
 - specify the number of samples
 - negative prompts
 - specify the number of images you'd like it to return
@@ -19,8 +19,9 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 - react to a dalepost with "🎲" to reroll the same prompt with a different seed
 
 ## Requirements
-- You MUST BE RUNNING the [Stable Diffusion AI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) locally.
-- I'm using Python 3.10.7
+- This isn't the AI. This is simply a bot that reads discord messages, feeds them into the AI, and returns the generated images back to discord.
+- You MUST BE RUNNING the [Stable Diffusion AI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) locally at http://127.0.0.1:7860/.
+- I'm using Python 3.10.7. Other versions of Python 3 may work, but I've only tested it on this version.
 - Use [this guide](https://blog.ruanbekker.com/blog/2022/05/05/create-a-discord-bot-in-python/) to set up a discord bot if you don't know how.
 	- Make sure the bot has permissions to:
 		- Read Messages/View Channels
