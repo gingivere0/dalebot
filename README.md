@@ -41,6 +41,8 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 	- pybase64
 	- pillow
 - Run the bot by typing "python bot.py" in the repository directory
+
+
 If you're able to start the bot running, and the bot is able to see discord messages, but you still get an error, it may be a problem I'm unable to fix. The Stable Diffusion webui updates the format of the json payload ocassionally. I'm unable to get this format dynamically; I can only set these indices manually. I've asked for help with this [here](https://github.com/AUTOMATIC1111/stable-diffusion-webui/discussions/2108), but as of right now I don't have a solution.
 
 	
