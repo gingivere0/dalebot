@@ -15,7 +15,8 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 - specify the number of images you'd like it to return
 - specify the resolution
 - specify denoising
-- specify
+- reply to a dalepost with "!dale" and more prompts, and dale will append those prompts onto the previous prompt(s)
+- react to a dalepost with "🎲" to reroll the same prompt with a different seed
 
 ## Requirements
 - You MUST BE RUNNING the [Stable Diffusion AI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) locally.
