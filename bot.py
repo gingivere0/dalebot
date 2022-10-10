@@ -1,13 +1,9 @@
-import sys
-
 import discord
 import os
 from dotenv import load_dotenv
 import requests
 import json
 import base64
-import urllib.request
-from PIL import Image
 
 from DataHolder import DataHolder, convertpng2txtfile
 
