@@ -28,6 +28,7 @@ class DataHolder:
         self.denoise_bool = False
         self.reply_string = ""
         self.original_message_id = -1
+        self.exclude_ind = 1
 
     def setup(self, message):
         self.original_prompt = self.reply_string + message.content[6:]
@@ -43,6 +44,7 @@ class DataHolder:
         self.seed_ind = 11
         self.num_loops = ""
         self.denoise_bool = False
+        self.exclude_ind = 1
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
@@ -96,7 +98,7 @@ class DataHolder:
                     '}') > self.prompt_no_args.index('{'):
                 exclude = self.original_prompt.split('{', 1)[1].split('}', 1)[0]
                 self.prompt_no_args = self.prompt_no_args.replace('{' + exclude + '}', "")
-                self.post_obj['data'][2] = exclude
+                self.post_obj['data'][self.exclude_ind] = exclude
 
             if 'loops=' in word:
                 self.num_loops = word.split("=")[1]
@@ -106,13 +108,13 @@ class DataHolder:
         self.post_obj['data'][self.prompt_ind] = self.prompt_no_args
 
     # attachments can either be upscales or part of a prompt
-    # returns if is an upscale
+    # returns if is an is_upscale
     async def messageattachments(self, message):
 
         convertpng2txtfile(requests.get(message.attachments[0].url).content)
 
         if len(self.words) >= 1 and self.words[0] == "upscale":
-            await self.upscale(message)
+            await self.upscalejson()
             return True
 
         self.attachedjsonframework()
@@ -127,7 +129,7 @@ class DataHolder:
         self.post_obj = json.load(f)
         f.close()
 
-        prompt_ind = 1
+        self.prompt_ind = 1
 
         with open("output.txt", "r") as textfile:
             self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
@@ -140,6 +142,7 @@ class DataHolder:
         self.resy_ind = 26
         self.seed_ind = 20
         self.denoise_bool = True
+        self.exclude_ind = 2
 
         # get the resolution of the original image, make the new image have the same resolution, adjusted to closest 64
         img = Image.open("output.png")
@@ -147,18 +150,21 @@ class DataHolder:
         self.post_obj['data'][self.resx_ind] = nearest64(img.size[0])
         self.post_obj['data'][self.resy_ind] = nearest64(img.size[1])
 
-    async def upscale(self, message):
-        # load the base json template for the upscale
+    # the json object for upscaling an image is different from the json object for generating an image.
+    # this method sets up the json object for upscaling an image
+    async def upscalejson(self):
+        # load the base json template for the is_upscale
         f = open('updata.json')
         self.post_obj = json.load(f)
         f.close()
 
         with open("output.txt", "r") as textfile:
             self.post_obj['data'][1] = "data:image/png;base64," + textfile.read()
+            # self.post_obj['data'][10] = "[\n\"data:image/png;base64," + textfile.read()+"\"\n]"
 
         with open("testout.txt", "w") as filefile:
             filefile.write(json.dumps(self.post_obj))
-        # upscale up to 10 times if an upscale factor is included
+        # upscale up to 10 times if an is_upscale factor is included
         if len(self.words) > 1 and self.words[1].isnumeric() and float(self.words[1]) <= 10:
             self.post_obj['data'][6] = int(self.words[1])
 

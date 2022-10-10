@@ -111,7 +111,7 @@ async def on_message(message):
         if not is_upscale:
             await data_holder.wordparse(message)
 
-        await postresponse(message)
+        await postresponse(message, is_upscale)
 
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("✅")
@@ -125,12 +125,16 @@ async def on_message(message):
 # sends post_obj to the AI, gets a response,
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
-async def postresponse(message):
+async def postresponse(message, is_upscale):
     response = requests.post(url, json=data_holder.post_obj)
     responsestr = json.dumps(response.json())
     seed = ""
     if "Seed:" in responsestr:
         seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
+    imgdata = None
+    # if is_upscale:
+    #     imgdata = base64.b64decode(response.json()['data'][1]['value'][22:])
+    # else:
     imgdata = base64.b64decode(response.json()['data'][0][0][22:])
     filename = "testimg.png"
     with open(filename, "wb") as f:

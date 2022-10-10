@@ -1,5 +1,5 @@
 {
-  "fn_index": 37,
+  "fn_index": 41,
   "data": [
     0,
     "",
@@ -8,12 +8,14 @@
     0,
     0,
     2,
-    "Real-ESRGAN 4x plus",
+    "ESRGAN_4x",
     "None",
     1,
-    [],
-    "",
-    ""
+    [
+      ""
+    ],
+    "<p>Upscale: 2, model:ESRGAN_4x<br>\n</p>",
+    "<div class='performance'><p class='time'>Time taken: <wbr>1.35s</p><p class='vram'>Torch active/reserved: 1/2 MiB, <wbr>Sys VRAM: 1518/8192 MiB (18.53%)</p></div>"
   ],
-  "session_hash": "yufxmjbb2"
+  "session_hash": "6ur8szkfzqp"
 }

@@ -1,5 +1,5 @@
 {
-  "fn_index": 28,
+  "fn_index": 31,
   "data": [
     0,
     "",
@@ -7,7 +7,7 @@
     "None",
     "None",
     "",
-    null,
+	null,
     null,
     null,
     "Draw mask",
@@ -41,11 +41,12 @@
     1,
     50,
     0,
+    false,
     4,
     1,
     "<p style=\"margin-bottom:0.75em\">Recommended settings: Sampling Steps: 80-100, Sampler: Euler a, Denoising strength: 0.8</p>",
     128,
-    4,
+    8,
     [
       "left",
       "right",
@@ -64,9 +65,9 @@
       "down"
     ],
     false,
+    false,
     null,
     "",
-    false,
     "<p style=\"margin-bottom:0.75em\">Will upscale the image to twice the dimensions; use width and height sliders to set tile size</p>",
     64,
     "None",
@@ -75,9 +76,10 @@
     "Steps",
     "",
     true,
+    false,
     null,
     "",
     ""
   ],
-  "session_hash": "iqanlbxf7wf"
+  "session_hash": "0a63n5z9v9y"
 }
