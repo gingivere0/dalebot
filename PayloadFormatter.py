@@ -5,12 +5,14 @@ from enum import Enum
 responsestr = {}
 
 
+# only need to get the schema once
 def setup():
     global responsestr
     response_format = requests.get("http://127.0.0.1:7860/config")
     responsestr = response_format.json()
 
 
+# prob don't need to do this lmao
 class PayloadFormat(Enum):
     TXT2IMG = 0
     IMG2IMG = 1
@@ -20,9 +22,27 @@ class PayloadFormat(Enum):
 def do_format(data_holder, payload_format: PayloadFormat):
 
     # dependencies have ids that point to components. these components (usually) have a label (like "Sampling steps")
-    # and a default value (like "20"). we find the dependency we want (key "js" must have value "submit").
+    # and a default value (like "20"). we find the dependency we want (key "js" must have value "submit" for txt2img,
+    # "submit_img2img" for img2img, and "get_extras_tab_index" for upscale).
     # then iterate through the ids in that dependency and match them with the corresponding id in the components.
     # store the label:value pairs in txt2imgjson.
+    # example:
+    # {"components":[
+    #               { "id": 6,
+    #                 "props":{
+    #                           "label":"Prompt",
+    #                           "value":""
+    #                          }
+    #                 }, etc ],
+    #   "dependencies":[
+    #                  { "inputs":{
+    #                       6,etc
+    #                              },
+    #                     "js":"submit", etc
+    #                   }]
+    # }
+    #
+    # dict["dependencies"]["input"] equals 6 which is the id of the component for Prompt
     dependenciesjson = responsestr["dependencies"]
     componentsjson = responsestr["components"]
     dependencylist = []
