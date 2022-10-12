@@ -70,6 +70,9 @@ def do_format(data_holder, payload_format: PayloadFormat):
                 # upscale has a duplicate label that messes things up
                 elif component["props"].get("label") == "Source" and component["props"].get("elem_id") == "pnginf_image":
                     labelvaluetuplelist.append(("", None))
+                # only gonna use the one upscaler, idc
+                elif component["props"].get("label") == "Upscale 1":
+                    labelvaluetuplelist.append((component["[props"].get("label"), "ESRGAN_4x"))
                 # these are the labels and values we actually care about
                 else:
                     labelvaluetuplelist.append((component["props"].get("label"), component["props"].get("value")))
