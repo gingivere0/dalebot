@@ -5,6 +5,7 @@ import requests
 import json
 import base64
 
+import PayloadFormatter
 from DataHolder import DataHolder, convertpng2txtfile
 
 BOT_NAME = "DaleBot"
@@ -39,6 +40,7 @@ data_holder = DataHolder()
 
 @bot.event
 async def on_ready():
+    PayloadFormatter.setup()
     print(f'{bot.user} has logged in.')
 
 

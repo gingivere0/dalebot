@@ -5,6 +5,8 @@ import json
 import base64
 from PIL import Image
 
+import PayloadFormatter
+
 
 class DataHolder:
     def __init__(self):
@@ -26,22 +28,27 @@ class DataHolder:
         self.reply_string = ""
         self.original_message_id = -1
         self.exclude_ind = 1
+        self.denoise_ind = 19
 
     def setup(self, message):
-        self.original_prompt = self.reply_string + message.content[6:]
-        self.prompt_no_args = self.reply_string + message.content[6:]
         self.reply_string = ""
         self.words = self.original_prompt.split()
-        self.prompt_ind = 0
-        self.sample_ind = 4
-        self.num_ind = 8
-        self.conform_ind = 10
-        self.resx_ind = 18
-        self.resy_ind = 17
-        self.seed_ind = 11
+        self.original_prompt = self.reply_string + message.content[6:]
+        self.prompt_no_args = self.reply_string + message.content[6:]
         self.num_loops = ""
         self.denoise_bool = False
-        self.exclude_ind = 1
+
+        # self.prompt_ind = 0
+        # self.sample_ind = 4
+        # self.num_ind = 8
+        # self.conform_ind = 10
+        # self.resx_ind = 18
+        # self.resy_ind = 17
+        # self.seed_ind = 11
+        # self.exclude_ind = 1
+        # self.denoise_ind = 19
+
+        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.TXT2IMG)
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
@@ -81,7 +88,7 @@ class DataHolder:
             if 'dn=' in word:
                 dn = word.split("=")[1]
                 if float(dn) <= 1 and self.denoise_bool:
-                    self.post_obj['data'][19] = float(dn)
+                    self.post_obj['data'][self.denoise_ind] = float(dn)
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
             if 'seed=' in word:
@@ -132,14 +139,16 @@ class DataHolder:
             self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
 
         # assign variable indices for image prompt json format
-        self.sample_ind = 10
-        self.num_ind = 16
-        self.conform_ind = 18
-        self.resx_ind = 27
-        self.resy_ind = 26
-        self.seed_ind = 20
+        # self.sample_ind = 10
+        # self.num_ind = 16
+        # self.conform_ind = 18
+        # self.resx_ind = 27
+        # self.resy_ind = 26
+        # self.seed_ind = 20
+        # self.exclude_ind = 2
+        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.IMG2IMG)
+
         self.denoise_bool = True
-        self.exclude_ind = 2
 
         # get the resolution of the original image, make the new image have the same resolution, adjusted to closest 64
         img = Image.open("output.png")
