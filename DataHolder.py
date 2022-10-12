@@ -29,12 +29,13 @@ class DataHolder:
         self.original_message_id = -1
         self.exclude_ind = 1
         self.denoise_ind = 19
+        self.resize_ind = 6
 
     def setup(self, message):
         self.reply_string = ""
-        self.words = self.original_prompt.split()
         self.original_prompt = self.reply_string + message.content[6:]
         self.prompt_no_args = self.reply_string + message.content[6:]
+        self.words = self.original_prompt.split()
         self.num_loops = ""
         self.denoise_bool = False
 
@@ -52,7 +53,6 @@ class DataHolder:
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
-
         for word in self.words:
             if 'samples=' in word:
                 samples = word.split("=")[1]
@@ -93,7 +93,6 @@ class DataHolder:
 
             if 'seed=' in word:
                 seed = word.split("=")[1]
-
                 self.post_obj['data'][self.seed_ind] = int(seed) if int(
                     seed) < sys.maxsize else sys.maxsize - 1
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
@@ -133,7 +132,7 @@ class DataHolder:
         self.post_obj = json.load(f)
         f.close()
 
-        self.prompt_ind = 1
+        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.IMG2IMG)
 
         with open("output.txt", "r") as textfile:
             self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
@@ -146,7 +145,6 @@ class DataHolder:
         # self.resy_ind = 26
         # self.seed_ind = 20
         # self.exclude_ind = 2
-        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.IMG2IMG)
 
         self.denoise_bool = True
 
@@ -164,15 +162,17 @@ class DataHolder:
         self.post_obj = json.load(f)
         f.close()
 
+        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.UPSCALE)
+
         with open("output.txt", "r") as textfile:
-            self.post_obj['data'][1] = "data:image/png;base64," + textfile.read()
+            self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
             # self.post_obj['data'][10] = "[\n\"data:image/png;base64," + textfile.read()+"\"\n]"
 
         with open("testout.txt", "w") as filefile:
             filefile.write(json.dumps(self.post_obj))
         # upscale up to 10 times if an is_upscale factor is included
         if len(self.words) > 1 and self.words[1].isnumeric() and float(self.words[1]) <= 10:
-            self.post_obj['data'][6] = int(self.words[1])
+            self.post_obj['data'][self.resize_ind] = int(self.words[1])
 
 
 # write attachment to file as image, then read image from file and write string to file as base64encoded bytes
