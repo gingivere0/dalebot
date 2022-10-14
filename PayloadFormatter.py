@@ -71,8 +71,8 @@ def do_format(data_holder, payload_format: PayloadFormat):
                 elif component["props"].get("label") == "Source" and component["props"].get("elem_id") == "pnginf_image":
                     labelvaluetuplelist.append(("", None))
                 # only gonna use the one upscaler, idc
-                elif component["props"].get("label") == "Upscale 1":
-                    labelvaluetuplelist.append((component["[props"].get("label"), "ESRGAN_4x"))
+                elif component["props"].get("label") == "Upscaler 1":
+                    labelvaluetuplelist.append((component["props"].get("label"), "ESRGAN_4x"))
                 # slightly changing the img2img Script label so it doesn't clash with another label of the same name
                 elif component["props"].get("label") == "Script" and len(component["props"].get("choices")) > 3:
                     labelvaluetuplelist.append(("Scripts", "None"))
