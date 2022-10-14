@@ -73,6 +73,9 @@ def do_format(data_holder, payload_format: PayloadFormat):
                 # only gonna use the one upscaler, idc
                 elif component["props"].get("label") == "Upscale 1":
                     labelvaluetuplelist.append((component["[props"].get("label"), "ESRGAN_4x"))
+                # slightly changing the img2img Script label so it doesn't clash with another label of the same name
+                elif component["props"].get("label") == "Script" and len(component["props"].get("choices")) > 3:
+                    labelvaluetuplelist.append(("Scripts", "None"))
                 # these are the labels and values we actually care about
                 else:
                     labelvaluetuplelist.append((component["props"].get("label"), component["props"].get("value")))
@@ -116,18 +119,24 @@ def do_format(data_holder, payload_format: PayloadFormat):
         elif labelvaluetuplelist[i][0] == "Resize":
             data_holder.resize_ind = i
             print(f'resize: {str(i)}')
+        elif labelvaluetuplelist[i][0] == "Scripts":
+            data_holder.script_ind = i
+            print(f'script: {str(i)}')
+        elif labelvaluetuplelist[i][0] == "Loops":
+            data_holder.loop_ind = i
+            print(f'loops: {str(i)}')
     data = []
     for i in labelvaluetuplelist:
         data.append(i[1])
     filejson = ""
     filename = "data.json"
-    prepend = "{\"fn_index\": 11,\"data\": "
+    prepend = "{\"fn_index\": 13,\"data\": "
     if payload_format == PayloadFormat.IMG2IMG:
         filename = "imgdata.json"
-        prepend = "{\"fn_index\": 31,\"data\": "
+        prepend = "{\"fn_index\": 33,\"data\": "
     elif payload_format == PayloadFormat.UPSCALE:
         filename = "updata.json"
-        prepend = "{\"fn_index\": 41,\"data\": "
+        prepend = "{\"fn_index\": 42,\"data\": "
     postend = ",\"session_hash\": \"cucp21gbbx8\"}"
     with open(filename, "w") as f:
         f.write(prepend)

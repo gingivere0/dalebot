@@ -1,4 +1,4 @@
-{"fn_index": 11,"data": [
+{"fn_index": 13,"data": [
   "",
   "",
   "None",
@@ -19,8 +19,9 @@
   512,
   512,
   false,
-  false,
   0.7,
+  512,
+  512,
   "None",
   false,
   false,
@@ -28,9 +29,10 @@
   "",
   "Seed",
   "",
-  "Steps",
+  "Nothing",
   "",
   true,
+  false,
   false,
   [],
   "",

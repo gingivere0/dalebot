@@ -22,22 +22,25 @@ class DataHolder:
         self.resy_ind = 17
         self.seed_ind = 11
         self.data_ind = 5
-        self.num_loops = ""
-        self.got_loops = False
+        self.num_loop = ""
         self.denoise_bool = False
         self.reply_string = ""
         self.original_message_id = -1
         self.exclude_ind = 1
         self.denoise_ind = 19
         self.resize_ind = 6
+        self.script_ind = 35
+        self.loop_ind = 42
+        self.is_looping = False
 
     def setup(self, message):
         self.reply_string = ""
         self.original_prompt = self.reply_string + message.content[6:]
         self.prompt_no_args = self.reply_string + message.content[6:]
         self.words = self.original_prompt.split()
-        self.num_loops = ""
+        self.num_loop = ""
         self.denoise_bool = False
+        self.is_looping = False
 
         # self.prompt_ind = 0
         # self.sample_ind = 4
@@ -104,9 +107,12 @@ class DataHolder:
                 self.post_obj['data'][self.exclude_ind] = exclude
 
             if 'loops=' in word:
-                self.num_loops = word.split("=")[1]
+                self.num_loop = word.split("=")[1]
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                self.got_loops = True
+                if len(message.attachments) > 0:
+                    self.post_obj['data'][self.script_ind] = "Loopback"
+                    self.post_obj['data'][self.loop_ind] = int(self.num_loop)
+                # self.is_looping = True
 
         self.post_obj['data'][self.prompt_ind] = self.prompt_no_args
 

@@ -126,7 +126,7 @@ async def on_message(message):
 async def postresponse(message):
     with open("img2imgjson.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
-    response = requests.post(url, json=data_holder.post_obj)
+    response = requests.post(url, json=data_holder.post_obj, timeout=60)
     responsestr = json.dumps(response.json())
     seed = ""
     if "Seed:" in responsestr:
@@ -137,28 +137,28 @@ async def postresponse(message):
         f.write(imgdata)
 
     # loops an image back into the AI
-    if data_holder.num_loops.isnumeric() and int(data_holder.num_loops) > 1:
-        if int(data_holder.num_loops) > 15:
-            data_holder.num_loops = "15"
-        for x in range(0, int(data_holder.num_loops) - 1):
-            # if the original message doesn't have an attachment, we have to run the setup on the post_obj
-            if len(message.attachments) == 0:
-                message.attachments = [1]
-                convertpng2txtfile(imgdata)
-                data_holder.attachedjsonframework()
-                await data_holder.wordparse(message)
-            with open("output.txt", "r") as textfile:
-                data_holder.post_obj['data'][4] = "data:image/png;base64," + textfile.read()
-            data_holder.post_obj['data'][data_holder.prompt_ind] = data_holder.prompt_no_args
-            response = requests.post(url, json=data_holder.post_obj)
-            responsestr = json.dumps(response.json())
-            seed = ""
-            if "Seed:" in responsestr:
-                seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
-            imgdata = base64.b64decode(response.json()['data'][0][0][22:])
-            filename = "testimg.png"
-            with open(filename, "wb") as f:
-                f.write(imgdata)
+    # if data_holder.num_loops.isnumeric() and int(data_holder.num_loops) > 1:
+    #     if int(data_holder.num_loops) > 15:
+    #         data_holder.num_loops = "15"
+    #     for x in range(0, int(data_holder.num_loops) - 1):
+    #         # if the original message doesn't have an attachment, we have to run the setup on the post_obj
+    #         if len(message.attachments) == 0:
+    #             message.attachments = [1]
+    #             convertpng2txtfile(imgdata)
+    #             data_holder.attachedjsonframework()
+    #             await data_holder.wordparse(message)
+    #         with open("output.txt", "r") as textfile:
+    #             data_holder.post_obj['data'][4] = "data:image/png;base64," + textfile.read()
+    #         data_holder.post_obj['data'][data_holder.prompt_ind] = data_holder.prompt_no_args
+    #         response = requests.post(url, json=data_holder.post_obj)
+    #         responsestr = json.dumps(response.json())
+    #         seed = ""
+    #         if "Seed:" in responsestr:
+    #             seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
+    #         imgdata = base64.b64decode(response.json()['data'][0][0][22:])
+    #         filename = "testimg.png"
+    #         with open(filename, "wb") as f:
+    #             f.write(imgdata)
 
     with open(filename, 'rb') as f:
         picture = discord.File(f)
