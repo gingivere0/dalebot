@@ -128,7 +128,6 @@ def do_format(data_holder, payload_format: PayloadFormat):
     data = []
     for i in labelvaluetuplelist:
         data.append(i[1])
-    filejson = ""
     filename = "data.json"
     prepend = "{\"fn_index\": 13,\"data\": "
     if payload_format == PayloadFormat.IMG2IMG:
