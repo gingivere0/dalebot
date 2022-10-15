@@ -48,15 +48,27 @@ def do_format(data_holder, payload_format: PayloadFormat):
     dependencylist = []
     labelvaluetuplelist = []
 
-    for dep in dependenciesjson:
-        if (dep["js"] == "submit" and payload_format == PayloadFormat.TXT2IMG) or (dep["js"] == "submit_img2img" and payload_format == PayloadFormat.IMG2IMG) or (dep["js"] == "get_extras_tab_index" and payload_format == PayloadFormat.UPSCALE):
-            dependencylist = dep["inputs"].copy()
-            for i in dep["outputs"]:
+    txt2img_fn_index = 0
+    img2img_fn_index = 0
+    upscale_fn_index = 0
+
+    for dep in range(0, len(dependenciesjson)):
+        if (dependenciesjson[dep]["js"] == "submit" and payload_format == PayloadFormat.TXT2IMG) or (dependenciesjson[dep]["js"] == "submit_img2img" and payload_format == PayloadFormat.IMG2IMG) or (dependenciesjson[dep]["js"] == "get_extras_tab_index" and payload_format == PayloadFormat.UPSCALE):
+            dependencylist = dependenciesjson[dep]["inputs"].copy()
+            for i in dependenciesjson[dep]["outputs"]:
                 try:
                     dependencylist.append(i.copy())
                 except:
                     dependencylist.append(i)
-            break
+        # later on, json payload uses the function index to determine what parameters to accept.
+        # function index is the position in dependencies in the schema that the function appears,
+        # so txt2img is the 13th function (in this version, could change in the future)
+        if dependenciesjson[dep]["js"] == "submit" and txt2img_fn_index == 0:
+            txt2img_fn_index = dep
+        elif dependenciesjson[dep]["js"] == "submit_img2img" and img2img_fn_index == 0:
+            img2img_fn_index = dep
+        elif dependenciesjson[dep]["js"] == "get_extras_tab_index" and upscale_fn_index == 0:
+            upscale_fn_index = dep\
 
     for identifier in dependencylist:
         for component in componentsjson:
@@ -125,17 +137,18 @@ def do_format(data_holder, payload_format: PayloadFormat):
         elif labelvaluetuplelist[i][0] == "Loops":
             data_holder.loop_ind = i
             print(f'loops: {str(i)}')
+
     data = []
     for i in labelvaluetuplelist:
         data.append(i[1])
     filename = "data.json"
-    prepend = "{\"fn_index\": 13,\"data\": "
+    prepend = "{\"fn_index\": %s,\"data\": " % txt2img_fn_index
     if payload_format == PayloadFormat.IMG2IMG:
         filename = "imgdata.json"
-        prepend = "{\"fn_index\": 33,\"data\": "
+        prepend = "{\"fn_index\": %s,\"data\": " % img2img_fn_index
     elif payload_format == PayloadFormat.UPSCALE:
         filename = "updata.json"
-        prepend = "{\"fn_index\": 42,\"data\": "
+        prepend = "{\"fn_index\": %s,\"data\": " % upscale_fn_index
     postend = ",\"session_hash\": \"cucp21gbbx8\"}"
     with open(filename, "w") as f:
         f.write(prepend)
