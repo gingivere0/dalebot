@@ -32,7 +32,7 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 		- Attach Files
 		- Add Reactions
 		- Possibly others that I'm forgetting
-	- You can stop following the linked guide when you get to the step where they're editing mc_discord_bot.py
+	- You can stop following the linked guide when you get to the step where they're editing the .env file
 	- Enable Message Content Intent (and maybe Presence Intent and Server Members Intent) under the Bot tab of the Discord Applications
 - Clone this repository locally
 - Generate and copy an OAuth2 Token for your bot. Create a text file in the repository called ".env". Its contents should look like this:
