@@ -4,6 +4,7 @@ import requests
 import json
 import base64
 from PIL import Image
+import shlex
 
 import PayloadFormatter
 
@@ -32,12 +33,15 @@ class DataHolder:
         self.script_ind = 35
         self.loop_ind = 42
         self.is_looping = False
+        self.sampling_methods = []
+        self.sampling_methods_ind = 5
 
     def setup(self, message):
         self.reply_string = ""
         self.original_prompt = self.reply_string + message.content[6:]
         self.prompt_no_args = self.reply_string + message.content[6:]
-        self.words = self.original_prompt.split()
+        # split on spaces, preserve quotes
+        self.words = shlex.split(self.original_prompt)
         self.num_loop = ""
         self.denoise_bool = False
         self.is_looping = False
@@ -83,7 +87,7 @@ class DataHolder:
                     self.post_obj['data'][self.resx_ind] = nearest64(int(resx))
                     self.post_obj['data'][self.resy_ind] = nearest64(int(resy))
                 else:
-                    await message.channel.send(
+                    await message.reply(
                         "I'm really stupid so I can't render images bigger than "
                         "1600x1600. Instead, try attaching an image and running !dale upscale")
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
@@ -113,6 +117,24 @@ class DataHolder:
                     self.post_obj['data'][self.script_ind] = "Loopback"
                     self.post_obj['data'][self.loop_ind] = int(self.num_loop)
                 # self.is_looping = True
+
+            if 'sampler=' in word:
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
+                # i can remove the word from prompt_no_args
+                equalsind = word.index('=')
+                word = word[:equalsind+1]+'"'+word[equalsind+1:]+'"'
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                sampler = word.split("=")[1]
+                # remove quotation marks
+                sampler = sampler.replace('"', '')
+                for default_sampler in self.sampling_methods:
+                    if default_sampler.lower() == sampler.lower():
+                        self.post_obj['data'][self.sampling_methods_ind] = default_sampler
+                        break
+                if sampler.lower() not in map(str.lower, self.sampling_methods):
+                    await message.reply("Sampling method not found. Defaulting to \"Euler a\". Please make sure "
+                                        "sampler matches one of: \n" + ", ".join(self.sampling_methods))
 
         self.post_obj['data'][self.prompt_ind] = self.prompt_no_args
 
@@ -185,7 +207,6 @@ class DataHolder:
 # this is a function is a setup for later, as output.txt will be read from and passed as an image data string.
 # there must be a better way to do this
 def convertpng2txtfile(imgdata):
-
     if os.path.exists("output.png"):
         os.remove("output.png")
     with open("output.png", "wb") as imgfile:

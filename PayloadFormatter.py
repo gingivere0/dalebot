@@ -64,11 +64,11 @@ def do_format(data_holder, payload_format: PayloadFormat):
         # function index is the position in dependencies in the schema that the function appears,
         # so txt2img is the 13th function (in this version, could change in the future)
         if dependenciesjson[dep]["js"] == "submit" and txt2img_fn_index == 0:
-            txt2img_fn_index = dep
+            txt2img_fn_index = dep+1
         elif dependenciesjson[dep]["js"] == "submit_img2img" and img2img_fn_index == 0:
-            img2img_fn_index = dep
+            img2img_fn_index = dep+1
         elif dependenciesjson[dep]["js"] == "get_extras_tab_index" and upscale_fn_index == 0:
-            upscale_fn_index = dep\
+            upscale_fn_index = dep+1
 
     for identifier in dependencylist:
         for component in componentsjson:
@@ -88,6 +88,9 @@ def do_format(data_holder, payload_format: PayloadFormat):
                 # slightly changing the img2img Script label so it doesn't clash with another label of the same name
                 elif component["props"].get("label") == "Script" and len(component["props"].get("choices")) > 3:
                     labelvaluetuplelist.append(("Scripts", "None"))
+                elif component["props"].get("label") == "Sampling method":
+                    labelvaluetuplelist.append(("Sampling method", "Euler a"))
+                    data_holder.sampling_methods = component["props"].get("choices")
                 # these are the labels and values we actually care about
                 else:
                     labelvaluetuplelist.append((component["props"].get("label"), component["props"].get("value")))
@@ -137,6 +140,9 @@ def do_format(data_holder, payload_format: PayloadFormat):
         elif labelvaluetuplelist[i][0] == "Loops":
             data_holder.loop_ind = i
             print(f'loops: {str(i)}')
+        elif labelvaluetuplelist[i][0] == "Sampling method":
+            data_holder.sampling_methods_ind = i
+            print(f'sampling method: {str(i)}')
 
     data = []
     for i in labelvaluetuplelist:
