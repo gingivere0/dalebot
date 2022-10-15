@@ -42,7 +42,7 @@ def do_format(data_holder, payload_format: PayloadFormat):
     #                   }]
     # }
     #
-    # dict["dependencies"]["input"] equals 6 which is the id of the component for Prompt
+    # dict["dependencies"]["input"][0] equals 6 which is the id of the component for Prompt
     dependenciesjson = responsestr["dependencies"]
     componentsjson = responsestr["components"]
     dependencylist = []

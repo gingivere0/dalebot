@@ -20,8 +20,8 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 
 ## Requirements
 - This isn't the AI. This is simply a bot that reads discord messages, feeds them into the AI, and returns the generated images back to discord.
-- Make sure you have whatever the current version of [Stable Diffusion AI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is.
-- You MUST BE RUNNING the [Stable Diffusion AI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) locally at http://127.0.0.1:7860/.
+- Make sure you have whatever the current version of [AUTOMATIC1111's Stable Diffusion AI Web UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) is.
+- You MUST BE RUNNING the [AUTOMATIC1111's Stable Diffusion AI Web UI](https://github.com/AUTOMATIC1111/stable-diffusion-webui) locally at http://127.0.0.1:7860/.
 - I'm using Python 3.10.7. Other versions of Python 3 may work, but I've only tested it on this version.
 - Use [this guide](https://blog.ruanbekker.com/blog/2022/05/05/create-a-discord-bot-in-python/) to set up a discord bot if you don't know how.
 	- Make sure the bot has permissions to:
@@ -33,6 +33,7 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 		- Add Reactions
 		- Possibly others that I'm forgetting
 	- You can stop following the linked guide when you get to the step where they're editing mc_discord_bot.py
+	- Enable Message Content Intent (and maybe Presence Intent and Server Members Intent) under the Bot tab of the Discord Applications
 - Clone this repository locally
 - Generate and copy an OAuth2 Token for your bot. Create a text file in the repository called ".env". Its contents should look like this:
 	- ![](envfile.png)
