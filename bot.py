@@ -28,12 +28,14 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "seed=0-very large number, describes the seed from which to begin generation. the same prompt with the " \
              "same seed will generate the same image.\n" \
              "\tseed is useful for making slight modifications to an image that you think is close to what you want\n" \
+             "sampler=\"Euler a\", describes the sampling method to use. there are a lot, so type sampler=help to " \
+             "get a full list\n" \
              "{exclude this}, use curly braces to define words that you want the AI to exclude during generation\n\n" \
              "Higher numbers for num and samples mean longer generation times.\n" \
              "Click the die emote on my messages to reroll the same prompt with a different seed.\n" \
              "Respond to my messages with \"!dale extra words\" to include extra words in a previous prompt.\n" \
              "Example of a complicated request (will take a couple minutes to reply):\n" \
-             "!dale firetruck conform=20 num=4 samples=35 res=832x256 {birds}"
+             "!dale firetruck conform=20 num=4 samples=15 res=832x256 sampler=\"DPM2 a Karras\" {birds}"
 
 data_holder = DataHolder()
 
@@ -70,7 +72,6 @@ async def get_all_parent_contents(message):
 
 @bot.event
 async def on_message(message):
-
     # post_obj['data'][4] = 20
     # post_obj['data'][8] = 1
     # post_obj['data'][10] = 10
@@ -91,7 +92,7 @@ async def on_message(message):
 
         await message.add_reaction("🔄")
 
-        await bot.change_presence(activity=discord.Game('with myself: '+message.content))
+        await bot.change_presence(activity=discord.Game('with myself: ' + message.content))
 
         # set the default indices in case the previous prompt wasn't default
         data_holder.setup(message)
