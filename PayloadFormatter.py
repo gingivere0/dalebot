@@ -1,6 +1,7 @@
 import requests
 import json
 from enum import Enum
+import platform
 
 responsestr = {}
 
@@ -64,11 +65,12 @@ def do_format(data_holder, payload_format: PayloadFormat):
         # function index is the position in dependencies in the schema that the function appears,
         # so txt2img is the 13th function (in this version, could change in the future)
         if dependenciesjson[dep]["js"] == "submit" and txt2img_fn_index == 0:
-            txt2img_fn_index = dep+1
+            # not sure if it's different on linux but this is a guess
+            txt2img_fn_index = dep + (0 if platform.system() == "Linux" else 1)
         elif dependenciesjson[dep]["js"] == "submit_img2img" and img2img_fn_index == 0:
-            img2img_fn_index = dep+1
+            img2img_fn_index = dep + (0 if platform.system() == "Linux" else 1)
         elif dependenciesjson[dep]["js"] == "get_extras_tab_index" and upscale_fn_index == 0:
-            upscale_fn_index = dep+1
+            upscale_fn_index = dep + (0 if platform.system() == "Linux" else 1)
 
     for identifier in dependencylist:
         for component in componentsjson:
