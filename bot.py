@@ -128,7 +128,13 @@ async def postresponse(message):
     with open("img2imgjson.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
     response = requests.post(url, json=data_holder.post_obj, timeout=60)
-    responsestr = json.dumps(response.json())
+    responsestr = json.dumps(response.json(), indent=2)
+    with open("testfullfile.txt", "w") as f:
+        f.write(responsestr)
+    responsejson = response.json()
+    responsejson['data'][0][0] = ""
+    with open("testfile.txt", "w") as f:
+        f.write(json.dumps(responsejson, indent=2))
     seed = ""
     if "Seed:" in responsestr:
         seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
