@@ -105,7 +105,7 @@ def do_format(data_holder, payload_format: PayloadFormat):
         if labelvaluetuplelist[i][0] == "Prompt":
             data_holder.prompt_ind = i
             print(f'prompt: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Negative Prompt":
+        elif labelvaluetuplelist[i][0] == "Negative prompt":
             data_holder.exclude_ind = i
             print(f'negprompt: {str(i)}')
         elif labelvaluetuplelist[i][0] == "Sampling Steps":
