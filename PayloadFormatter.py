@@ -11,6 +11,8 @@ def setup():
     global responsestr
     response_format = requests.get("http://127.0.0.1:7860/config")
     responsestr = response_format.json()
+    with open("schema.txt","w") as f:
+        f.write(json.dumps(responsestr))
 
 
 # prob don't need to do this lmao
