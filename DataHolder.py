@@ -13,7 +13,7 @@ class DataHolder:
     def __init__(self):
         self.prompt_no_args = ""
         self.original_prompt = ""
-        self.words = ""
+        self.words = []
         self.post_obj = None
         self.prompt_ind = 0
         self.sample_ind = 4
@@ -40,8 +40,13 @@ class DataHolder:
         self.reply_string = ""
         self.original_prompt = self.reply_string + message.content[6:]
         self.prompt_no_args = self.reply_string + message.content[6:]
-        # split on spaces, preserve quotes
-        self.words = new_split(self.original_prompt)
+        # split on spaces, removes quotes
+        self.words = shlex.split(self.original_prompt)
+        # put the quotes back in because I didn't want them gone. I couldn't find a better way to do this
+        for i in range(0, len(self.words)):
+            if "=" in self.words[i] and " " in self.words[i]:
+                equalsind = self.words[i].index("=")
+                self.words[i] = self.words[i][:equalsind + 1] + '"' + self.words[i][equalsind + 1:] + '"'
         self.num_loop = ""
         self.denoise_bool = False
         self.is_looping = False
@@ -226,13 +231,3 @@ def nearest64(integer):
         integer = 64
     return integer
 
-
-# ripped this code from stackoverflow:
-# https://stackoverflow.com/questions/6868382/python-shlex-split-ignore-single-quotes
-# ignores single quotes, split on spaces while preserving double quotes
-def new_split(value):
-    lex = shlex.shlex(value)
-    lex.quotes = '"'
-    lex.whitespace_split = True
-    lex.commenters = ''
-    return list(lex)

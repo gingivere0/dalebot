@@ -100,53 +100,54 @@ def do_format(data_holder, payload_format: PayloadFormat):
                     labelvaluetuplelist.append((component["props"].get("label"), component["props"].get("value")))
                 break
 
-    # iterate through txt2imgjson, find a label you're looking for, and store the index for later use by data_holder
-    for i in range(0, len(labelvaluetuplelist)):
-        if labelvaluetuplelist[i][0] == "Prompt":
-            data_holder.prompt_ind = i
-            print(f'prompt: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Negative prompt":
-            data_holder.exclude_ind = i
-            print(f'negprompt: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Sampling Steps":
-            data_holder.sample_ind = i
-            print(f'samples: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Batch count":
-            data_holder.num_ind = i
-            print(f'num: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "CFG Scale":
-            data_holder.conform_ind = i
-            print(f'conform: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Seed":
-            data_holder.seed_ind = i
-            print(f'seed: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Height":
-            data_holder.resy_ind = i
-            print(f'resy: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Width":
-            data_holder.resx_ind = i
-            print(f'resx: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Denoising strength":
-            data_holder.denoise_ind = i
-            print(f'dn: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Image for img2img":
-            data_holder.data_ind = i
-            print(f'data: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Source":
-            data_holder.data_ind = i
-            print(f'data: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Resize":
-            data_holder.resize_ind = i
-            print(f'resize: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Scripts":
-            data_holder.script_ind = i
-            print(f'script: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Loops":
-            data_holder.loop_ind = i
-            print(f'loops: {str(i)}')
-        elif labelvaluetuplelist[i][0] == "Sampling method":
-            data_holder.sampling_methods_ind = i
-            print(f'sampling method: {str(i)}')
+    with open("log/indices.txt", "w") as f:
+        # iterate through txt2imgjson, find a label you're looking for, and store the index for later use by data_holder
+        for i in range(0, len(labelvaluetuplelist)):
+            if labelvaluetuplelist[i][0] == "Prompt":
+                data_holder.prompt_ind = i
+                f.write(f'prompt: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Negative prompt":
+                data_holder.exclude_ind = i
+                f.write(f'negprompt: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Sampling Steps":
+                data_holder.sample_ind = i
+                f.write(f'samples: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Batch count":
+                data_holder.num_ind = i
+                f.write(f'num: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "CFG Scale":
+                data_holder.conform_ind = i
+                f.write(f'conform: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Seed":
+                data_holder.seed_ind = i
+                f.write(f'seed: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Height":
+                data_holder.resy_ind = i
+                f.write(f'resy: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Width":
+                data_holder.resx_ind = i
+                f.write(f'resx: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Denoising strength":
+                data_holder.denoise_ind = i
+                f.write(f'dn: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Image for img2img":
+                data_holder.data_ind = i
+                f.write(f'data: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Source":
+                data_holder.data_ind = i
+                f.write(f'data: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Resize":
+                data_holder.resize_ind = i
+                f.write(f'resize: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Scripts":
+                data_holder.script_ind = i
+                f.write(f'script: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Loops":
+                data_holder.loop_ind = i
+                f.write(f'loops: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Sampling method":
+                data_holder.sampling_methods_ind = i
+                f.write(f'sampling method: {str(i)}\n')
 
     data = []
     for i in labelvaluetuplelist:
