@@ -3,10 +3,10 @@ import os
 from dotenv import load_dotenv
 import requests
 import json
-import base64
+from pathlib import Path
 
 import PayloadFormatter
-from DataHolder import DataHolder, convertpng2txtfile
+from DataHolder import DataHolder
 
 BOT_NAME = "DaleBot"
 
@@ -43,6 +43,7 @@ data_holder = DataHolder()
 @bot.event
 async def on_ready():
     PayloadFormatter.setup()
+    Path("log").mkdir(parents=True, exist_ok=True)
     print(f'{bot.user} has logged in.')
 
 
@@ -125,15 +126,12 @@ async def on_message(message):
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
 async def postresponse(message):
-    with open("img2imgjson.json", "w") as f:
+    with open("log/post_obj.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
     response = requests.post(url, json=data_holder.post_obj, timeout=60)
     responsestr = json.dumps(response.json(), indent=2)
-    with open("testfullfile.txt", "w") as f:
+    with open("log/responsejson.json", "w") as f:
         f.write(responsestr)
-    responsejson = response.json()
-    with open("testfile.txt", "w") as f:
-        f.write(json.dumps(responsejson, indent=2))
     seed = ""
     if "Seed:" in responsestr:
         seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
@@ -149,7 +147,7 @@ async def postresponse(message):
     #             convertpng2txtfile(imgdata)
     #             data_holder.attachedjsonframework()
     #             await data_holder.wordparse(message)
-    #         with open("output.txt", "r") as textfile:
+    #         with open("attachment.txt", "r") as textfile:
     #             data_holder.post_obj['data'][4] = "data:image/png;base64," + textfile.read()
     #         data_holder.post_obj['data'][data_holder.prompt_ind] = data_holder.prompt_no_args
     #         response = requests.post(url, json=data_holder.post_obj)

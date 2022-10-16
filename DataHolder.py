@@ -162,7 +162,7 @@ class DataHolder:
 
         PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.IMG2IMG)
 
-        with open("output.txt", "r") as textfile:
+        with open("attachmentstring.txt", "r") as textfile:
             self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
 
         # assign variable indices for image prompt json format
@@ -177,7 +177,7 @@ class DataHolder:
         self.denoise_bool = True
 
         # get the resolution of the original image, make the new image have the same resolution, adjusted to closest 64
-        img = Image.open("output.png")
+        img = Image.open("attachment.png")
 
         self.post_obj['data'][self.resx_ind] = nearest64(img.size[0])
         self.post_obj['data'][self.resy_ind] = nearest64(img.size[1])
@@ -192,29 +192,27 @@ class DataHolder:
 
         PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.UPSCALE)
 
-        with open("output.txt", "r") as textfile:
+        with open("attachmentstring.txt", "r") as textfile:
             self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
             # self.post_obj['data'][10] = "[\n\"data:image/png;base64," + textfile.read()+"\"\n]"
 
-        with open("testout.txt", "w") as filefile:
-            filefile.write(json.dumps(self.post_obj))
         # upscale up to 10 times if an is_upscale factor is included
         if len(self.words) > 1 and self.words[1].isnumeric() and float(self.words[1]) <= 10:
             self.post_obj['data'][self.resize_ind] = int(self.words[1])
 
 
 # write attachment to file as image, then read image from file and write string to file as base64encoded bytes
-# this is a function is a setup for later, as output.txt will be read from and passed as an image data string.
+# this is a function is a setup for later, as attachment.txt will be read from and passed as an image data string.
 # there must be a better way to do this
 def convertpng2txtfile(imgdata):
-    if os.path.exists("output.png"):
-        os.remove("output.png")
-    with open("output.png", "wb") as imgfile:
+    if os.path.exists("attachment.png"):
+        os.remove("attachment.png")
+    with open("attachment.png", "wb") as imgfile:
         imgfile.write(imgdata)
-    encodedattachment = base64.b64encode(open("output.png", "rb").read())
-    if os.path.exists("output.txt"):
-        os.remove("output.txt")
-    with open("output.txt", "wb") as textfile:
+    encodedattachment = base64.b64encode(open("attachment.png", "rb").read())
+    if os.path.exists("attachmentstring.txt"):
+        os.remove("attachmentstring.txt")
+    with open("attachmentstring.txt", "wb") as textfile:
         textfile.write(encodedattachment)
 
 

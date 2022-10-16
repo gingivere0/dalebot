@@ -68,11 +68,11 @@ def do_format(data_holder, payload_format: PayloadFormat):
         # so txt2img is the 13th function (in this version, could change in the future)
         if dependenciesjson[dep]["js"] == "submit" and txt2img_fn_index == 0:
             # not sure if it's different on linux but this is a guess
-            txt2img_fn_index = dep + (0 if platform.system() == "Linux" else 1)
+            txt2img_fn_index = dep
         elif dependenciesjson[dep]["js"] == "submit_img2img" and img2img_fn_index == 0:
-            img2img_fn_index = dep + (0 if platform.system() == "Linux" else 1)
+            img2img_fn_index = dep
         elif dependenciesjson[dep]["js"] == "get_extras_tab_index" and upscale_fn_index == 0:
-            upscale_fn_index = dep + (0 if platform.system() == "Linux" else 1)
+            upscale_fn_index = dep
 
     for identifier in dependencylist:
         for component in componentsjson:
@@ -164,6 +164,3 @@ def do_format(data_holder, payload_format: PayloadFormat):
         f.write(prepend)
         f.write(json.dumps(data, indent=2))
         f.write(postend)
-    with open("txt2imgjson.json", "w") as f:
-        f.write(json.dumps(data, indent=2))
-
