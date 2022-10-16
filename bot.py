@@ -132,16 +132,11 @@ async def postresponse(message):
     with open("testfullfile.txt", "w") as f:
         f.write(responsestr)
     responsejson = response.json()
-    responsejson['data'][0][0] = ""
     with open("testfile.txt", "w") as f:
         f.write(json.dumps(responsejson, indent=2))
     seed = ""
     if "Seed:" in responsestr:
         seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
-    imgdata = base64.b64decode(response.json()['data'][0][0][22:])
-    filename = "testimg.png"
-    with open(filename, "wb") as f:
-        f.write(imgdata)
 
     # loops an image back into the AI
     # if data_holder.num_loops.isnumeric() and int(data_holder.num_loops) > 1:
@@ -167,12 +162,10 @@ async def postresponse(message):
     #         with open(filename, "wb") as f:
     #             f.write(imgdata)
 
-    with open(filename, 'rb') as f:
-        picture = discord.File(f)
-        if len(seed) > 0:
-            await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
-        else:
-            await message.reply(file=picture)
-
+    picture = discord.File(response.json()['data'][0][0]['name'])
+    if len(seed) > 0:
+        await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
+    else:
+        await message.reply(file=picture)
 
 bot.run(DISCORD_TOKEN)
