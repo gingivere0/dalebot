@@ -107,7 +107,7 @@ def do_format(data_holder, payload_format: PayloadFormat):
             data_holder.exclude_ind = i
             print(f'negprompt: {str(i)}')
         elif labelvaluetuplelist[i][0] == "Sampling Steps":
-            data_holder.exclude_ind = i
+            data_holder.sample_ind = i
             print(f'samples: {str(i)}')
         elif labelvaluetuplelist[i][0] == "Batch count":
             data_holder.num_ind = i

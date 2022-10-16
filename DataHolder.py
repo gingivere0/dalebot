@@ -41,7 +41,7 @@ class DataHolder:
         self.original_prompt = self.reply_string + message.content[6:]
         self.prompt_no_args = self.reply_string + message.content[6:]
         # split on spaces, preserve quotes
-        self.words = shlex.split(self.original_prompt)
+        self.words = new_split(self.original_prompt)
         self.num_loop = ""
         self.denoise_bool = False
         self.is_looping = False
@@ -227,3 +227,14 @@ def nearest64(integer):
     if integer == 0:
         integer = 64
     return integer
+
+
+# ripped this code from stackoverflow:
+# https://stackoverflow.com/questions/6868382/python-shlex-split-ignore-single-quotes
+# ignores single quotes, split on spaces while preserving double quotes
+def new_split(value):
+    lex = shlex.shlex(value)
+    lex.quotes = '"'
+    lex.whitespace_split = True
+    lex.commenters = ''
+    return list(lex)
