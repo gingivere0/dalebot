@@ -12,6 +12,8 @@ BOT_NAME = "DaleBot"
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("TOKEN")
+USERNAME = os.getenv("USER")
+PASSWORD = os.getenv("PASS")
 
 bot = discord.Client(intents=discord.Intents.all())
 
@@ -38,11 +40,26 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "!dale firetruck conform=20 num=4 samples=15 res=832x256 sampler=\"DPM2 a Karras\" {birds}"
 
 data_holder = DataHolder()
+s = requests.Session()
 
 
 @bot.event
 async def on_ready():
-    PayloadFormatter.setup()
+    global s
+    if json.loads(s.get("http://127.0.0.1:7860/config").content).get("detail") == "Not authenticated":
+        headers = {"Connection": "keep-alive", "Host": "127.0.0.1:7860"}
+        payload = {'username': USERNAME, 'password': PASSWORD}
+
+        res = s.post('http://127.0.0.1:7860/login', headers=headers, data=payload)
+        try:
+            if json.loads(res.content).get("detail") == "Incorrect credentials.":
+                print("Incorrect credentials. Please make sure the user and pass in .env match the user and pass given "
+                      "after --gradio-auth")
+                os._exit(1)
+        except Exception:
+            pass
+    PayloadFormatter.setup(s)
+
     Path("log").mkdir(parents=True, exist_ok=True)
     print(f'{bot.user} has logged in.')
 
@@ -126,9 +143,10 @@ async def on_message(message):
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
 async def postresponse(message):
+    global s
     with open("log/post_obj.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
-    response = requests.post(url, json=data_holder.post_obj, timeout=60)
+    response = s.post(url, json=data_holder.post_obj, timeout=60)
     responsestr = json.dumps(response.json(), indent=2)
     with open("log/responsejson.json", "w") as f:
         f.write(responsestr)

@@ -7,9 +7,9 @@ responsestr = {}
 
 
 # only need to get the schema once
-def setup():
+def setup(s):
     global responsestr
-    response_format = requests.get("http://127.0.0.1:7860/config")
+    response_format = s.get("http://127.0.0.1:7860/config")
     responsestr = response_format.json()
     with open("schema.txt","w") as f:
         f.write(json.dumps(responsestr))
