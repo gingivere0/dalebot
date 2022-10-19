@@ -76,9 +76,7 @@ class DataHolder:
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
-        print(self.words)
         for word in self.words:
-            print(word)
             if 'samples=' in word:
                 samples = word.split("=")[1]
                 if samples.isnumeric() and int(samples) <= 100:
