@@ -13,7 +13,7 @@ class DataHolder:
     def __init__(self):
         self.prompt_no_args = ""
         self.original_prompt = ""
-        self.words = []
+        self.words = ""
         self.post_obj = None
         self.prompt_ind = 0
         self.sample_ind = 4
@@ -41,12 +41,23 @@ class DataHolder:
         self.original_prompt = self.reply_string + message.content[6:]
         self.prompt_no_args = self.reply_string + message.content[6:]
         # split on spaces, removes quotes
-        self.words = shlex.split(self.original_prompt)
         # put the quotes back in because I didn't want them gone. I couldn't find a better way to do this
+        # for i in range(0, len(self.words)):
+        #     if "=" in self.words[i] and " " in self.words[i]:
+        #         equalsind = self.words[i].index("=")
+        #         self.words[i] = self.words[i][:equalsind + 1] + '"' + self.words[i][equalsind + 1:] + '"'
+        tempString = self.original_prompt
+        if "=\"" in tempString:
+            equalsind = tempString.index("=\"")
+            tempString = tempString[:equalsind + 1] + " " + tempString[equalsind + 1:]
+
+        self.words = new_split(tempString)
         for i in range(0, len(self.words)):
-            if "=" in self.words[i] and " " in self.words[i]:
-                equalsind = self.words[i].index("=")
-                self.words[i] = self.words[i][:equalsind + 1] + '"' + self.words[i][equalsind + 1:] + '"'
+            if i >= len(self.words):
+                break
+            if self.words[i][-1] == "=" and i + 1 <= len(self.words):
+                self.words[i] += self.words[i + 1]
+                del self.words[i + 1]
         self.num_loop = ""
         self.denoise_bool = False
         self.is_looping = False
@@ -65,7 +76,9 @@ class DataHolder:
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
+        print(self.words)
         for word in self.words:
+            print(word)
             if 'samples=' in word:
                 samples = word.split("=")[1]
                 if samples.isnumeric() and int(samples) <= 100:
@@ -231,3 +244,10 @@ def nearest64(integer):
         integer = 64
     return integer
 
+
+def new_split(value):
+    lex = shlex.shlex(value)
+    lex.quotes = '"'
+    lex.whitespace_split = True
+    lex.commenters = ''
+    return list(lex)

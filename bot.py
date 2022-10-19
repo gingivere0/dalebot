@@ -178,7 +178,12 @@ async def postresponse(message):
     #         with open(filename, "wb") as f:
     #             f.write(imgdata)
 
-    picture = discord.File(response.json()['data'][0][0]['name'])
+    try:
+        picture = discord.File(response.json()['data'][0][0]['name'])
+    except Exception:
+        await message.remove_reaction("🔄", bot.user)
+        await message.add_reaction("❌")
+        return
     if len(seed) > 0:
         await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
     else:
