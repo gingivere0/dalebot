@@ -36,8 +36,10 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "Higher numbers for num and samples mean longer generation times.\n" \
              "Click the die emote on my messages to reroll the same prompt with a different seed.\n" \
              "Respond to my messages with \"!dale extra words\" to include extra words in a previous prompt.\n" \
-             "Example of a complicated request (will take a couple minutes to reply):\n" \
-             "!dale firetruck conform=20 num=4 samples=15 res=832x256 sampler=\"DPM2 a Karras\" {birds}"
+             "Example of a complicated request (will take a couple minutes to reply. only works if a style name " \
+             "\"cartoon\" has been set; remove that parameter otherwise):\n" \
+             "!dale firetruck conform=20 num=4 samples=15 res=832x256 sampler=\"DPM2 a Karras\" {birds} " \
+             "style1=\"cartoon\" "
 
 data_holder = DataHolder()
 s = requests.Session()
@@ -188,5 +190,6 @@ async def postresponse(message):
         await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
     else:
         await message.reply(file=picture)
+
 
 bot.run(DISCORD_TOKEN)

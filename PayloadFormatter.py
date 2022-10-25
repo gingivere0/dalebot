@@ -4,11 +4,17 @@ from enum import Enum
 import platform
 
 responsestr = {}
+txt2img_fn_index = 0
+img2img_fn_index = 0
+upscale_fn_index = 0
+style_name_fn_index = 0
+s = requests.session()
 
 
 # only need to get the schema once
-def setup(s):
-    global responsestr
+def setup(session):
+    global responsestr, s
+    s = session
     response_format = s.get("http://127.0.0.1:7860/config")
     responsestr = response_format.json()
     with open("schema.txt","w") as f:
@@ -50,10 +56,7 @@ def do_format(data_holder, payload_format: PayloadFormat):
     componentsjson = responsestr["components"]
     dependencylist = []
     labelvaluetuplelist = []
-
-    txt2img_fn_index = 0
-    img2img_fn_index = 0
-    upscale_fn_index = 0
+    global txt2img_fn_index, img2img_fn_index, upscale_fn_index, style_name_fn_index
 
     for dep in range(0, len(dependenciesjson)):
         if (dependenciesjson[dep]["js"] == "submit" and payload_format == PayloadFormat.TXT2IMG) or (dependenciesjson[dep]["js"] == "submit_img2img" and payload_format == PayloadFormat.IMG2IMG) or (dependenciesjson[dep]["js"] == "get_extras_tab_index" and payload_format == PayloadFormat.UPSCALE):
@@ -73,6 +76,17 @@ def do_format(data_holder, payload_format: PayloadFormat):
             img2img_fn_index = dep
         elif dependenciesjson[dep]["js"] == "get_extras_tab_index" and upscale_fn_index == 0:
             upscale_fn_index = dep
+        elif dependenciesjson[dep]["js"] == "ask_for_style_name" and style_name_fn_index == 0:
+            style_name_fn_index = dep
+
+    # should probably put this in another method or something
+    # gets the list of style names
+    prepend = "{\"fn_index\": %s,\"data\": " % style_name_fn_index
+    data = "[\"\", \"\",\"\"]"
+    postend = ",\"session_hash\": \"cucp21gbbx8\"}"
+    post_obj = prepend+data+postend
+    response = s.post("http://127.0.0.1:7860/api/predict", data=post_obj, timeout=60)
+    data_holder.style_names = response.json()["data"][0]["choices"]
 
     for identifier in dependencylist:
         for component in componentsjson:
@@ -101,7 +115,8 @@ def do_format(data_holder, payload_format: PayloadFormat):
                 break
 
     with open("log/indices.txt", "w") as f:
-        # iterate through txt2imgjson, find a label you're looking for, and store the index for later use by data_holder
+        # iterate through labelvaluetuplelist, find a label you're looking for, and store the index for
+        # later use by data_holder
         for i in range(0, len(labelvaluetuplelist)):
             if labelvaluetuplelist[i][0] == "Prompt":
                 data_holder.prompt_ind = i
@@ -148,6 +163,10 @@ def do_format(data_holder, payload_format: PayloadFormat):
             elif labelvaluetuplelist[i][0] == "Sampling method":
                 data_holder.sampling_methods_ind = i
                 f.write(f'sampling method: {str(i)}\n')
+            elif labelvaluetuplelist[i][0] == "Style 1":
+                data_holder.style1_ind = i
+            elif labelvaluetuplelist[i][0] == "Style 2":
+                data_holder.style2_ind = i
 
     data = []
     for i in labelvaluetuplelist:

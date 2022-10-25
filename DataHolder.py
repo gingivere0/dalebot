@@ -35,6 +35,9 @@ class DataHolder:
         self.is_looping = False
         self.sampling_methods = []
         self.sampling_methods_ind = 5
+        self.style1_ind = 3
+        self.style2_ind = 4
+        self.style_names = []
 
     def setup(self, message):
         self.reply_string = ""
@@ -151,6 +154,42 @@ class DataHolder:
                 if sampler.lower() not in map(str.lower, self.sampling_methods):
                     await message.reply("Sampling method not found. Defaulting to \"Euler a\". Please make sure "
                                         "sampler matches one of: \n" + ", ".join(self.sampling_methods))
+
+            if 'style1=' in word:
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
+                # i can remove the word from prompt_no_args
+                equalsind = word.index('=')
+                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                style = word.split("=")[1]
+                # remove quotation marks
+                style = style.replace('"', '')
+                for default_style in self.style_names:
+                    if default_style.lower() == style.lower():
+                        self.post_obj['data'][self.style1_ind] = default_style
+                        break
+                if style.lower() not in map(str.lower, self.style_names):
+                    await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
+                                        "style name matches one of: \n" + ", ".join(self.style_names))
+
+            if 'style2=' in word:
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
+                # i can remove the word from prompt_no_args
+                equalsind = word.index('=')
+                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                style = word.split("=")[1]
+                # remove quotation marks
+                style = style.replace('"', '')
+                for default_style in self.style_names:
+                    if default_style.lower() == style.lower():
+                        self.post_obj['data'][self.style2_ind] = default_style
+                        break
+                if style.lower() not in map(str.lower, self.style_names):
+                    await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
+                                        "style name matches one of: \n" + ", ".join(self.style_names))
 
         self.post_obj['data'][self.prompt_ind] = self.prompt_no_args
 
