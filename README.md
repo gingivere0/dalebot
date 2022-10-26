@@ -18,6 +18,7 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 - reply to a dalepost with "!dale" and more prompts, and dale will append those prompts onto the previous prompt(s)
 - react to a dalepost with "🎲" to reroll the same prompt with a different seed
 - specify up to 2 preset styles using style1 and style2 parameters (may add ability to save styles in a future update)
+- change models using model="model name" parameter
 
 ## Requirements
 - This isn't the AI. This is simply a bot that reads discord messages, feeds them into the AI, and returns the generated images back to discord.
