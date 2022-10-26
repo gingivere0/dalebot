@@ -8,6 +8,7 @@ txt2img_fn_index = 0
 img2img_fn_index = 0
 upscale_fn_index = 0
 style_name_fn_index = 0
+model_name_fn_index = 0
 s = requests.session()
 
 
@@ -26,6 +27,7 @@ class PayloadFormat(Enum):
     TXT2IMG = 0
     IMG2IMG = 1
     UPSCALE = 2
+    MODELCHANGE = 3
 
 
 def do_format(data_holder, payload_format: PayloadFormat):
@@ -56,7 +58,7 @@ def do_format(data_holder, payload_format: PayloadFormat):
     componentsjson = responsestr["components"]
     dependencylist = []
     labelvaluetuplelist = []
-    global txt2img_fn_index, img2img_fn_index, upscale_fn_index, style_name_fn_index
+    global txt2img_fn_index, img2img_fn_index, upscale_fn_index, style_name_fn_index, model_name_fn_index
 
     for dep in range(0, len(dependenciesjson)):
         if (dependenciesjson[dep]["js"] == "submit" and payload_format == PayloadFormat.TXT2IMG) or (dependenciesjson[dep]["js"] == "submit_img2img" and payload_format == PayloadFormat.IMG2IMG) or (dependenciesjson[dep]["js"] == "get_extras_tab_index" and payload_format == PayloadFormat.UPSCALE):
@@ -78,6 +80,13 @@ def do_format(data_holder, payload_format: PayloadFormat):
             upscale_fn_index = dep
         elif dependenciesjson[dep]["js"] == "ask_for_style_name" and style_name_fn_index == 0:
             style_name_fn_index = dep
+        # idk of a better way to do this. probably really inefficient but only needs to happen once
+        elif len(dependenciesjson[dep]["targets"]) == 1 and model_name_fn_index < 2:
+            for component in componentsjson:
+                if dependenciesjson[dep]["targets"][0] == component["id"] and component["props"].get("label") == "Stable Diffusion checkpoint":
+                    model_name_fn_index = dep
+                    data_holder.model_names = component["props"].get("choices")
+                    break
 
     # should probably put this in another method or something
     # gets the list of style names
@@ -179,6 +188,10 @@ def do_format(data_holder, payload_format: PayloadFormat):
     elif payload_format == PayloadFormat.UPSCALE:
         filename = "updata.json"
         prepend = "{\"fn_index\": %s,\"data\": " % upscale_fn_index
+    elif payload_format == PayloadFormat.MODELCHANGE:
+        filename = "modelchange.json"
+        prepend = "{\"fn_index\": %s,\"data\": " % model_name_fn_index
+        data = ["filler"]
     postend = ",\"session_hash\": \"cucp21gbbx8\"}"
     with open(filename, "w") as f:
         f.write(prepend)

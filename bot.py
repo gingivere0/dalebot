@@ -117,6 +117,8 @@ async def on_message(message):
         # set the default indices in case the previous prompt wasn't default
         data_holder.setup(message)
 
+
+
         # messages with attachments have different post_obj formats
         # if the message is an upscale or img2img, format post_obj accordingly
         is_upscale = False
@@ -127,10 +129,11 @@ async def on_message(message):
             data_holder.post_obj = json.load(f)
             f.close()
 
+        is_model_change = False
         if not is_upscale:
-            await data_holder.wordparse(message)
+            is_model_change = await data_holder.wordparse(message)
 
-        await postresponse(message)
+        await postresponse(message, is_model_change)
 
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("✅")
@@ -144,7 +147,7 @@ async def on_message(message):
 # sends post_obj to the AI, gets a response,
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
-async def postresponse(message):
+async def postresponse(message, is_model_change):
     global s
     with open("log/post_obj.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
@@ -181,14 +184,16 @@ async def postresponse(message):
     #             f.write(imgdata)
 
     try:
-        picture = discord.File(response.json()['data'][0][0]['name'])
-    except Exception:
+        if not is_model_change:
+            picture = discord.File(response.json()['data'][0][0]['name'])
+    except Exception as e:
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("❌")
+        print(type(e))
         return
     if len(seed) > 0:
         await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
-    else:
+    elif not is_model_change:
         await message.reply(file=picture)
 
 

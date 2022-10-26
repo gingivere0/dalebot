@@ -38,6 +38,7 @@ class DataHolder:
         self.style1_ind = 3
         self.style2_ind = 4
         self.style_names = []
+        self.model_names = []
 
     def setup(self, message):
         self.reply_string = ""
@@ -80,6 +81,29 @@ class DataHolder:
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
         for word in self.words:
+            if 'model=' in word:
+                PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
+                with open('modelchange.json') as f:
+                    self.post_obj = json.load(f)
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
+                # i can remove the word from prompt_no_args
+                equalsind = word.index('=')
+                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+                model = word.split("=")[1]
+                # remove quotation marks
+                model = model.replace('"', '')
+                for default_model in self.model_names:
+                    if default_model.lower() == model.lower():
+                        self.post_obj['data'][0] = model
+                        break
+                if model.lower() not in map(str.lower, self.model_names):
+                    await message.reply(
+                        "Model name \"" + model + "\" not found. Please make sure "
+                                                  "model name matches one of: \n" + ", ".join(self.model_names))
+                return True
+
             if 'samples=' in word:
                 samples = word.split("=")[1]
                 if samples.isnumeric() and int(samples) <= 100:
