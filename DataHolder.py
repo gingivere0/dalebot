@@ -39,6 +39,7 @@ class DataHolder:
         self.style2_ind = 4
         self.style_names = []
         self.model_names = []
+        self.is_model_change = False
 
     def setup(self, message):
         self.reply_string = ""
@@ -65,6 +66,7 @@ class DataHolder:
         self.num_loop = ""
         self.denoise_bool = False
         self.is_looping = False
+        self.is_model_change = False
 
         # self.prompt_ind = 0
         # self.sample_ind = 4
@@ -102,7 +104,8 @@ class DataHolder:
                     await message.reply(
                         "Model name \"" + model + "\" not found. Please make sure "
                                                   "model name matches one of: \n" + ", ".join(self.model_names))
-                return True
+                self.is_model_change = True
+                return
 
             if 'samples=' in word:
                 samples = word.split("=")[1]

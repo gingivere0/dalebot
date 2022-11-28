@@ -129,11 +129,10 @@ async def on_message(message):
             data_holder.post_obj = json.load(f)
             f.close()
 
-        is_model_change = False
         if not is_upscale:
-            is_model_change = await data_holder.wordparse(message)
+            await data_holder.wordparse(message)
 
-        await postresponse(message, is_model_change)
+        await postresponse(message)
 
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("✅")
@@ -147,7 +146,7 @@ async def on_message(message):
 # sends post_obj to the AI, gets a response,
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
-async def postresponse(message, is_model_change):
+async def postresponse(message):
     global s
     with open("log/post_obj.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
@@ -184,8 +183,8 @@ async def postresponse(message, is_model_change):
     #             f.write(imgdata)
 
     try:
-        if not is_model_change:
-            picture = discord.File(response.json()['data'][0][0]['name'])
+        if not data_holder.is_model_change:
+            picture = discord.File(os.getenv("SDLOC")+"\\"+response.json()['data'][0][0]['name'])
     except Exception as e:
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("❌")
@@ -193,7 +192,7 @@ async def postresponse(message, is_model_change):
         return
     if len(seed) > 0:
         await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
-    elif not is_model_change:
+    elif not data_holder.is_model_change:
         await message.reply(file=picture)
 
 

@@ -37,7 +37,9 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 	- You can stop following the linked guide when you get to the step where they're editing the .env file
 	- Enable Message Content Intent (and maybe Presence Intent and Server Members Intent) under the Bot tab of the Discord Applications
 - Clone this repository locally
-- Generate and copy an OAuth2 Token for your bot. Create a text file in the repository called ".env". Its contents should look like this:
+- Generate and copy an OAuth2 Token for your bot. Paste this token into the .env created in a couple steps
+- Copy the location of the Stable Diffusion AI Web UI repo. Paste this location in the .env file in the next step
+- Create a text file in the repository called ".env". Its contents should look like this:
 	- ![](envfile.png)
 - Required python libraries (I installed with pip):
 	- discord

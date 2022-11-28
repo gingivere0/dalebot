@@ -36,7 +36,7 @@ def do_format(data_holder, payload_format: PayloadFormat):
     # and a default value (like "20"). we find the dependency we want (key "js" must have value "submit" for txt2img,
     # "submit_img2img" for img2img, and "get_extras_tab_index" for upscale).
     # then iterate through the ids in that dependency and match them with the corresponding id in the components.
-    # store the label:value pairs in txt2imgjson.
+    # store the label:value pairs in labelvaluetuplelist.
     # example:
     # {"components":[
     #               { "id": 6,
@@ -53,7 +53,7 @@ def do_format(data_holder, payload_format: PayloadFormat):
     #                   }]
     # }
     #
-    # dict["dependencies"]["input"][0] equals 6 which is the id of the component for Prompt
+    # schema["dependencies"]["input"][0] equals 6 which is the id of the component for Prompt
     dependenciesjson = responsestr["dependencies"]
     componentsjson = responsestr["components"]
     dependencylist = []
