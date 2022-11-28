@@ -96,15 +96,14 @@ class DataHolder:
                 model = word.split("=")[1]
                 # remove quotation marks
                 model = model.replace('"', '')
-                for default_model in self.model_names:
-                    if default_model.lower() == model.lower():
-                        self.post_obj['data'][0] = model
-                        break
-                if model.lower() not in map(str.lower, self.model_names):
-                    await message.reply(
-                        "Model name \"" + model + "\" not found. Please make sure "
-                                                  "model name matches one of: \n" + ", ".join(self.model_names))
                 self.is_model_change = True
+                for default_model in self.model_names:
+                    if default_model.lower().split(" [")[0] == model.lower() or default_model.lower() == model.lower():
+                        self.post_obj['data'][0] = model
+                        return
+                await message.reply(
+                    "Model name \"" + model + "\" not found. Please make sure "
+                                              "model name matches one of: \n" + ", ".join(self.model_names))
                 return
 
             if 'samples=' in word:
