@@ -79,6 +79,15 @@ async def on_reaction_add(reaction, user):
             await reaction.message.remove_reaction("🔄", bot.user)
             await reaction.message.add_reaction("✅")
 
+        if reaction.emoji == "🔎":
+            await reaction.message.add_reaction("🔄")
+            reaction.message.content = "!dale upscale"
+            data_holder.setup(reaction.message)
+            await data_holder.messageattachments(reaction.message)
+            await postresponse(reaction.message)
+            await reaction.message.remove_reaction("🔄", bot.user)
+            await reaction.message.add_reaction("✅")
+
 
 # include prompts from the parent messages in the current prompt
 async def get_all_parent_contents(message):
@@ -150,7 +159,7 @@ async def postresponse(message):
     global s
     with open("log/post_obj.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
-    response = s.post(url, json=data_holder.post_obj, timeout=60)
+    response = s.post(url, json=data_holder.post_obj, timeout=300)
     responsestr = json.dumps(response.json(), indent=2)
     with open("log/responsejson.json", "w") as f:
         f.write(responsestr)
@@ -191,7 +200,9 @@ async def postresponse(message):
         print(type(e))
         return
     if len(seed) > 0:
-        await (await message.reply("seed=" + seed, file=picture)).add_reaction("🎲")
+        replied_message = await message.reply("seed=" + seed, file=picture)
+        await replied_message.add_reaction("🎲")
+        await replied_message.add_reaction("🔎")
     elif not data_holder.is_model_change:
         await message.reply(file=picture)
 
