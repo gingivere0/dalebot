@@ -40,6 +40,7 @@ class DataHolder:
         self.style_names = []
         self.model_names = []
         self.is_model_change = False
+        self.is_upscale = False
 
     def setup(self, message):
         self.reply_string = ""
@@ -67,6 +68,7 @@ class DataHolder:
         self.denoise_bool = False
         self.is_looping = False
         self.is_model_change = False
+        self.is_upscale = False
 
         # self.prompt_ind = 0
         # self.sample_ind = 4
@@ -225,7 +227,7 @@ class DataHolder:
 
         convertpng2txtfile(requests.get(message.attachments[0].url).content)
 
-        if len(self.words) >= 1 and self.words[0] == "upscale":
+        if (len(self.words) >= 1 and self.words[0] == "upscale") or self.is_upscale:
             await self.upscalejson()
             return True
 

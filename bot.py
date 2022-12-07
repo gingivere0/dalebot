@@ -81,8 +81,8 @@ async def on_reaction_add(reaction, user):
 
         if reaction.emoji == "🔎":
             await reaction.message.add_reaction("🔄")
-            reaction.message.content = "!dale upscale"
             data_holder.setup(reaction.message)
+            data_holder.is_upscale = True
             await data_holder.messageattachments(reaction.message)
             await postresponse(reaction.message)
             await reaction.message.remove_reaction("🔄", bot.user)

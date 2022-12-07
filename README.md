@@ -7,7 +7,7 @@ A Discord bot which interfaces Discord messages with Stable Diffusion
 - Type "!dale help" to get a list of supported arguments
 - txt2img
 - img2img
-- upscale
+- upscale using "!dale upscale x" where x is the factor by which you want to upscale, or react to dalebot's post with "🔎"
 - specify the seed
 - set prompt conformity
 - specify the number of samples
