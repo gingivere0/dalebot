@@ -84,7 +84,6 @@ class DataHolder:
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
-        print(self.post_obj)
         for word in self.words:
             if 'model=' in word:
                 # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
@@ -225,7 +224,6 @@ class DataHolder:
                 if style.lower() not in map(str.lower, self.style_names):
                     await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
                                         "style name matches one of: \n" + ", ".join(self.style_names))
-
         self.post_obj['prompt'] = self.prompt_no_args
 
     # attachments can either be upscales or part of a prompt

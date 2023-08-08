@@ -17,7 +17,7 @@ PASSWORD = os.getenv("PASS")
 
 bot = discord.Client(intents=discord.Intents.all())
 
-url = "http://127.0.0.1:7860/api/predict"
+url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
 
 helpstring = "Hi! For a simple request, you can type something like \"!dale firetruck\"\n" \
              "More complicated requests have the following options:\n\n" \
@@ -156,6 +156,7 @@ async def on_message(message):
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
 async def postresponse(message):
+    print(data_holder.post_obj)
     global s
     with open("log/post_obj.json", "w") as f:
         f.write(json.dumps(data_holder.post_obj, indent=2))
@@ -193,7 +194,8 @@ async def postresponse(message):
 
     try:
         if not data_holder.is_model_change:
-            picture = discord.File(os.getenv("SDLOC")+"\\"+response.json()['data'][0][0]['name'])
+            #picture = discord.File(os.getenv("SDLOC")+"\\"+response.json()['data'][0][0]['name'])
+            picture = base64.b64decode(response.json()['images'])
     except Exception as e:
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("❌")

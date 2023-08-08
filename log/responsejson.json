@@ -1,16 +1,3 @@
 {
-  "data": [
-    [
-      {
-        "name": "C:\\Users\\gingi\\AppData\\Local\\Temp\\tmp9fbostcx\\tmpx8qhqi8h.png",
-        "data": null,
-        "is_file": true
-      }
-    ],
-    "<p>Upscale: 2, model:ESRGAN_4x<br>\n</p>",
-    "<div class='performance'><p class='time'>Time taken: <wbr>4.92s</p><p class='vram'>Torch active/reserved: 402/560 MiB, <wbr>Sys VRAM: 2100/8192 MiB (25.63%)</p></div>"
-  ],
-  "is_generating": false,
-  "duration": 4.919795989990234,
-  "average_duration": 4.931439320246379
+  "detail": "Not Found"
 }
