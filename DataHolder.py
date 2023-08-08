@@ -84,6 +84,7 @@ class DataHolder:
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
+        print(self.post_obj)
         for word in self.words:
             if 'model=' in word:
                 # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
