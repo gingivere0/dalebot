@@ -80,13 +80,13 @@ class DataHolder:
         # self.exclude_ind = 1
         # self.denoise_ind = 19
 
-        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.TXT2IMG)
+        # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.TXT2IMG)
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
         for word in self.words:
             if 'model=' in word:
-                PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
+                # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
                 with open('modelchange.json') as f:
                     self.post_obj = json.load(f)
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
@@ -108,22 +108,28 @@ class DataHolder:
                                               "model name matches one of: \n" + ", ".join(self.model_names))
                 return
 
+            if 'hd=' in word:
+                hd = word.split("=")[1]
+                if hd.isnumeric() and int(hd) <= 100:
+                    self.post_obj['enable_hr'] = int(hd)
+                self.prompt_no_args = self.prompt_no_args.replace(word, "")
+
             if 'samples=' in word:
                 samples = word.split("=")[1]
                 if samples.isnumeric() and int(samples) <= 100:
-                    self.post_obj['data'][self.sample_ind] = int(samples)
+                    self.post_obj['steps'] = int(samples)
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
             if 'num=' in word:
                 numpics = word.split("=")[1]
                 if numpics.isnumeric() and int(numpics) < 17:
-                    self.post_obj['data'][self.num_ind] = int(numpics)
+                    self.post_obj['batch_size'] = int(numpics)
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
             if 'conform=' in word:
                 conform = word.split("=")[1]
                 if conform.isnumeric() and int(conform) <= 100:
-                    self.post_obj['data'][self.conform_ind] = int(conform)
+                    self.post_obj['cfg_scale']= int(conform)
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
             if 'res=' in word:
@@ -131,8 +137,8 @@ class DataHolder:
                 resx = resolution.split("x")[0]
                 resy = resolution.split("x")[1]
                 if resx.isnumeric() and resy.isnumeric() and int(resx) <= 1600 and int(resy) <= 1600:
-                    self.post_obj['data'][self.resx_ind] = nearest64(int(resx))
-                    self.post_obj['data'][self.resy_ind] = nearest64(int(resy))
+                    self.post_obj['width'] = nearest64(int(resx))
+                    self.post_obj['height'] = nearest64(int(resy))
                 else:
                     await message.reply(
                         "I'm really stupid so I can't render images bigger than "
@@ -142,12 +148,12 @@ class DataHolder:
             if 'dn=' in word:
                 dn = word.split("=")[1]
                 if float(dn) <= 1 and self.denoise_bool:
-                    self.post_obj['data'][self.denoise_ind] = float(dn)
+                    self.post_obj['denoising_strength'] = float(dn)
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
             if 'seed=' in word:
                 seed = word.split("=")[1]
-                self.post_obj['data'][self.seed_ind] = int(seed) if int(
+                self.post_obj['seed'] = int(seed) if int(
                     seed) < sys.maxsize else sys.maxsize - 1
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
@@ -155,7 +161,7 @@ class DataHolder:
                     '}') > self.prompt_no_args.index('{'):
                 exclude = self.original_prompt.split('{', 1)[1].split('}', 1)[0]
                 self.prompt_no_args = self.prompt_no_args.replace('{' + exclude + '}', "")
-                self.post_obj['data'][self.exclude_ind] = exclude
+                self.post_obj['negative_prompt']= exclude
 
             if 'loops=' in word:
                 self.num_loop = word.split("=")[1]
@@ -177,7 +183,7 @@ class DataHolder:
                 sampler = sampler.replace('"', '')
                 for default_sampler in self.sampling_methods:
                     if default_sampler.lower() == sampler.lower():
-                        self.post_obj['data'][self.sampling_methods_ind] = default_sampler
+                        self.post_obj['hr_sampler_name'] = default_sampler
                         break
                 if sampler.lower() not in map(str.lower, self.sampling_methods):
                     await message.reply("Sampling method not found. Defaulting to \"Euler a\". Please make sure "
@@ -195,7 +201,7 @@ class DataHolder:
                 style = style.replace('"', '')
                 for default_style in self.style_names:
                     if default_style.lower() == style.lower():
-                        self.post_obj['data'][self.style1_ind] = default_style
+                        self.post_obj['styles'] = "["+default_style+"]"
                         break
                 if style.lower() not in map(str.lower, self.style_names):
                     await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
@@ -219,7 +225,7 @@ class DataHolder:
                     await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
                                         "style name matches one of: \n" + ", ".join(self.style_names))
 
-        self.post_obj['data'][self.prompt_ind] = self.prompt_no_args
+        self.post_obj['prompt'] = self.prompt_no_args
 
     # attachments can either be upscales or part of a prompt
     # returns if is an is_upscale
@@ -243,7 +249,7 @@ class DataHolder:
         self.post_obj = json.load(f)
         f.close()
 
-        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.IMG2IMG)
+        # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.IMG2IMG)
 
         with open("attachmentstring.txt", "r") as textfile:
             self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
@@ -273,7 +279,7 @@ class DataHolder:
         self.post_obj = json.load(f)
         f.close()
 
-        PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.UPSCALE)
+        # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.UPSCALE)
 
         with open("attachmentstring.txt", "r") as textfile:
             self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()

@@ -197,3 +197,33 @@ def do_format(data_holder, payload_format: PayloadFormat):
         f.write(prepend)
         f.write(json.dumps(data, indent=2))
         f.write(postend)
+
+
+def do_format2(data_holder, payload_format: PayloadFormat):
+
+    # create request schema file. set the labels in the file correctly. set the indices in dataholder as well.
+
+
+
+
+
+    data = []
+    for i in labelvaluetuplelist:
+        data.append(i[1])
+    filename = "data.json"
+    prepend = "{\"fn_index\": %s,\"data\": " % txt2img_fn_index
+    if payload_format == PayloadFormat.IMG2IMG:
+        filename = "imgdata.json"
+        prepend = "{\"fn_index\": %s,\"data\": " % img2img_fn_index
+    elif payload_format == PayloadFormat.UPSCALE:
+        filename = "updata.json"
+        prepend = "{\"fn_index\": %s,\"data\": " % upscale_fn_index
+    elif payload_format == PayloadFormat.MODELCHANGE:
+        filename = "modelchange.json"
+        prepend = "{\"fn_index\": %s,\"data\": " % model_name_fn_index
+        data = ["filler"]
+    postend = ",\"session_hash\": \"cucp21gbbx8\"}"
+    with open(filename, "w") as f:
+        f.write(prepend)
+        f.write(json.dumps(data, indent=2))
+        f.write(postend)
