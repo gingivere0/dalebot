@@ -11,6 +11,10 @@ from DataHolder import DataHolder
 from datetime import date
 import glob
 
+from PIL import Image
+import io
+import base64
+
 BOT_NAME = "DaleBot"
 
 load_dotenv()
@@ -197,9 +201,9 @@ async def postresponse(message):
 
     try:
         if not data_holder.is_model_change:
-            image = None;
-            for i in r['images']:
-                image = Image.open(io.BytesIO(base64.b64decode(i.split(",", 1)[0])))
+            i = response.json()['images'][0]
+            image = Image.open(io.BytesIO(base64.b64decode(i.split(",", 1)[0])))
+            print(len(i))
             image.save('output.png')
 
             #picture = discord.File(os.getenv("SDLOC")+"\\"+response.json()['data'][0][0]['name'])
@@ -215,6 +219,7 @@ async def postresponse(message):
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("❌")
         print(type(e))
+        print(e)
         return
     if len(seed) > 0:
         replied_message = await message.reply("seed=" + seed, file=picture)
