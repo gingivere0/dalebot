@@ -44,8 +44,8 @@ class DataHolder:
 
     def setup(self, message):
         self.reply_string = ""
-        self.original_prompt = self.reply_string + message.content[6:]
-        self.prompt_no_args = self.reply_string + message.content[6:]
+        self.original_prompt = self.reply_string + message.content[5:]
+        self.prompt_no_args = self.reply_string + message.content[5:]
         # split on spaces, removes quotes
         # put the quotes back in because I didn't want them gone. I couldn't find a better way to do this
         # for i in range(0, len(self.words)):
@@ -225,6 +225,9 @@ class DataHolder:
                     await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
                                         "style name matches one of: \n" + ", ".join(self.style_names))
         self.post_obj['prompt'] = self.prompt_no_args
+        self.post_obj['save_images'] = True
+        self.post_obj['width'] = 1024
+        self.post_obj['height'] = 1024
 
     # attachments can either be upscales or part of a prompt
     # returns if is an is_upscale

@@ -8,6 +8,9 @@ from pathlib import Path
 import PayloadFormatter
 from DataHolder import DataHolder
 
+from datetime import date
+import glob
+
 BOT_NAME = "DaleBot"
 
 load_dotenv()
@@ -91,8 +94,8 @@ async def on_reaction_add(reaction, user):
 
 # include prompts from the parent messages in the current prompt
 async def get_all_parent_contents(message):
-    if message.content[0:5] == "!dale":
-        data_holder.reply_string = " " + message.content[6:] + " " + data_holder.reply_string
+    if message.content[0:4] == "!dxl":
+        data_holder.reply_string = " " + message.content[5:] + " " + data_holder.reply_string
 
     # recursively get prompts from all parent messages in this reply chain
     if message.reference is not None:
@@ -113,7 +116,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content[0:5] == "!dale":
+    if message.content[0:4] == "!dxl":
 
         # get previous prompts if this message is a response to another message
         if message.reference is not None:
@@ -148,7 +151,7 @@ async def on_message(message):
 
         await bot.change_presence(activity=None)
 
-        if len(message.content[6:].split()) > 0 and "help" in message.content[6:].split()[0]:
+        if len(message.content[5:].split()) > 0 and "help" in message.content[5:].split()[0]:
             await message.channel.send(helpstring)
 
 
@@ -194,8 +197,20 @@ async def postresponse(message):
 
     try:
         if not data_holder.is_model_change:
+            image = None;
+            for i in r['images']:
+                image = Image.open(io.BytesIO(base64.b64decode(i.split(",", 1)[0])))
+            image.save('output.png')
+
             #picture = discord.File(os.getenv("SDLOC")+"\\"+response.json()['data'][0][0]['name'])
-            picture = base64.b64decode(response.json()['images'])
+            picture = discord.File("output.png")
+
+
+            # hugh's solution:
+            # folder = os.getenv("SDLOC") + "\\outputs\\txt2img-images\\" + str(date.today()) + "\\*"
+            # list_of_files = glob.glob(folder)
+            # latest_file = max(list_of_files, key=os.path.getctime)
+            # picture = discord.File(latest_file)
     except Exception as e:
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("❌")
