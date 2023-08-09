@@ -1,6 +1,6 @@
 {
-  "width": 640,
-  "height": 1536,
-  "prompt": "big tall man ",
+  "width": 1024,
+  "height": 1024,
+  "prompt": "What is the point of this upstairs location?",
   "save_images": true
 }

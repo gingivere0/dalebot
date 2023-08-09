@@ -267,8 +267,6 @@ class DataHolder:
         # get the resolution of the original image, make the new image have the same resolution, adjusted to closest 64
         img = Image.open("attachment.png")
 
-        self.post_obj['data'][self.resx_ind] = nearest64(img.size[0])
-        self.post_obj['data'][self.resy_ind] = nearest64(img.size[1])
 
     # the json object for upscaling an image is different from the json object for generating an image.
     # this method sets up the json object for upscaling an image
@@ -304,25 +302,18 @@ def convertpng2txtfile(imgdata):
         textfile.write(encodedattachment)
 
 
-# rounds an integer to the nearest 64, with a min of 64. useful for getting acceptable resolutions
-def nearest64(integer):
-    if integer % 64 > 32:
-        integer += 64 - (integer % 64)
-    else:
-        integer -= (integer % 64)
-    if integer == 0:
-        integer = 64
-    return integer
 
+# computers the aspect ratio of the requested resolution, then returns the closest value
+# in the list of supported SDXL resolutions
 def nearest_sdxl(resx, resy):
     res_string = resx + "x" + resy
     if res_string in SDXL_RES:
-        return (resx, resy)
+        return resx, resy
     ratios = [1.0, 1.29, 0.78, 1.46, 0.68, 1.75, 0.57, 2.4, 0.42]
     ratio = round(int(resx)/int(resy), 2)
     closest = ratios[min(range(len(ratios)), key = lambda i: abs(ratios[i]-ratio))]
     best = SDXL_RES[ratios.index(closest)]
-    return (int(best.split("x")[0]),int(best.split("x")[1]))
+    return int(best.split("x")[0]), int(best.split("x")[1])
 
 def new_split(value):
     lex = shlex.shlex(value)

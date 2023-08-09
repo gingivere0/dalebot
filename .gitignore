@@ -1,3 +1,5 @@
 .env
 .png
 .pyc
+.bak
+.json

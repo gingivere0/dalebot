@@ -30,8 +30,8 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "More complicated requests have the following options:\n\n" \
              "conform=1-30, describes how much the AI should conform to the prompt. Defaults to 7\n" \
              "num=1-16, describes how many pictures to generate. Defaults to 1\n" \
-             "samples=1-100, describes how many times the ai should run over the picture. Defaults to 20\n" \
-             "res=1-1600x1-1600, describes the resolution of the image. Defaults to 512x512\n" \
+             "samples=1-100, describes how many times the ai should run over the picture. Defaults to 50\n" \
+             "res=1-1600x1-1600, describes the resolution of the image. Defaults to 1024x1024\n" \
              "dn=0-1, describes the denoising amount when generating based off an existing image. Higher means more " \
              "changes. Defaults to 0.45\n" \
              "seed=0-very large number, describes the seed from which to begin generation. the same prompt with the " \
