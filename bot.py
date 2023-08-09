@@ -141,9 +141,7 @@ async def on_message(message):
         if len(message.attachments) > 0:
             is_upscale = await data_holder.messageattachments(message)
         else:
-            f = open('txt2img.json')
-            data_holder.post_obj = json.load(f)
-            f.close()
+            data_holder.post_obj = {}
 
         if not is_upscale:
             await data_holder.wordparse(message)
