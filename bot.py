@@ -20,6 +20,7 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("TOKEN")
 USERNAME = os.getenv("USER")
 PASSWORD = os.getenv("PASS")
+TRIGGER = os.getenv("TRIGGER")
 
 bot = discord.Client(intents=discord.Intents.all())
 
@@ -96,8 +97,8 @@ async def on_reaction_add(reaction, user):
 
 # include prompts from the parent messages in the current prompt
 async def get_all_parent_contents(message):
-    if message.content[0:4] == "!dxl":
-        data_holder.reply_string = " " + message.content[5:] + " " + data_holder.reply_string
+    if message.content[0:len(TRIGGER)] == TRIGGER:
+        data_holder.reply_string = " " + message.content[len(TRIGGER)+1:] + " " + data_holder.reply_string
 
     # recursively get prompts from all parent messages in this reply chain
     if message.reference is not None:
@@ -118,7 +119,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content[0:4] == "!dxl":
+    if message.content[0:len(TRIGGER)] == TRIGGER:
 
         # get previous prompts if this message is a response to another message
         if message.reference is not None:
@@ -129,8 +130,7 @@ async def on_message(message):
         await bot.change_presence(activity=discord.Game('with myself: ' + message.content))
 
         # set the default indices in case the previous prompt wasn't default
-        data_holder.setup(message)
-
+        data_holder.setup(message.content[len(TRIGGER)+1:])
 
 
         # messages with attachments have different post_obj formats
@@ -151,7 +151,7 @@ async def on_message(message):
 
         await bot.change_presence(activity=None)
 
-        if len(message.content[5:].split()) > 0 and "help" in message.content[5:].split()[0]:
+        if len(message.content[len(TRIGGER)+1:].split()) > 0 and "help" in message.content[len(TRIGGER)+1:].split()[0]:
             await message.channel.send(helpstring)
 
 

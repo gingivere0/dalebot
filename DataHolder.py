@@ -41,10 +41,11 @@ class DataHolder:
         self.is_model_change = False
         self.is_upscale = False
 
+
     def setup(self, message):
         self.reply_string = ""
-        self.original_prompt = self.reply_string + message.content[5:]
-        self.prompt_no_args = self.reply_string + message.content[5:]
+        self.original_prompt = self.reply_string + message
+        self.prompt_no_args = self.reply_string + message
         # split on spaces, removes quotes
         # put the quotes back in because I didn't want them gone. I couldn't find a better way to do this
         # for i in range(0, len(self.words)):
