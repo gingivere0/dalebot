@@ -5,7 +5,6 @@ import requests
 import json
 from pathlib import Path
 
-import PayloadFormatter
 from DataHolder import DataHolder
 
 from datetime import date
@@ -67,7 +66,6 @@ async def on_ready():
                 os._exit(1)
         except Exception:
             pass
-    PayloadFormatter.setup(s)
 
     Path("log").mkdir(parents=True, exist_ok=True)
     print(f'{bot.user} has logged in.')

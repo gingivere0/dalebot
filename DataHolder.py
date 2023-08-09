@@ -6,8 +6,6 @@ import base64
 from PIL import Image
 import shlex
 
-import PayloadFormatter
-
 SDXL_RES = ("1024x1024","1152x896","896x1152","1216x832","832x1216","1344x768","768x1344","1536x640","640x1536")
 
 class DataHolder:
@@ -303,7 +301,7 @@ def convertpng2txtfile(imgdata):
 
 
 
-# computers the aspect ratio of the requested resolution, then returns the closest value
+# computes the aspect ratio of the requested resolution, then returns the closest value
 # in the list of supported SDXL resolutions
 def nearest_sdxl(resx, resy):
     res_string = resx + "x" + resy
