@@ -86,6 +86,7 @@ class DataHolder:
     async def wordparse(self, message):
         self.post_obj['width'] = 1024
         self.post_obj['height'] = 1024
+        self.post_obj['steps'] = 30
         for word in self.words:
             if 'model=' in word:
                 # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
