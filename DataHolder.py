@@ -8,6 +8,7 @@ import shlex
 
 import PayloadFormatter
 
+SDXL_RES = ("1024x1024","1152x896","896x1152","1216x832","832x1216","1344x768","768x1344","1536x640","640x1536")
 
 class DataHolder:
     def __init__(self):
@@ -84,6 +85,8 @@ class DataHolder:
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self, message):
+        self.post_obj['width'] = 1024
+        self.post_obj['height'] = 1024
         for word in self.words:
             if 'model=' in word:
                 # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
@@ -136,13 +139,9 @@ class DataHolder:
                 resolution = word.split("=")[1]
                 resx = resolution.split("x")[0]
                 resy = resolution.split("x")[1]
-                if resx.isnumeric() and resy.isnumeric() and int(resx) <= 1600 and int(resy) <= 1600:
-                    self.post_obj['width'] = nearest64(int(resx))
-                    self.post_obj['height'] = nearest64(int(resy))
-                else:
-                    await message.reply(
-                        "I'm really stupid so I can't render images bigger than "
-                        "1600x1600. Instead, try attaching an image and running !dale upscale")
+                closest_resolution = nearest_sdxl(resx, resy)
+                self.post_obj['width'] = closest_resolution[0]
+                self.post_obj['height'] = closest_resolution[1]
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
             if 'dn=' in word:
@@ -226,8 +225,6 @@ class DataHolder:
                                         "style name matches one of: \n" + ", ".join(self.style_names))
         self.post_obj['prompt'] = self.prompt_no_args
         self.post_obj['save_images'] = True
-        self.post_obj['width'] = 1024
-        self.post_obj['height'] = 1024
 
     # attachments can either be upscales or part of a prompt
     # returns if is an is_upscale
@@ -317,6 +314,15 @@ def nearest64(integer):
         integer = 64
     return integer
 
+def nearest_sdxl(resx, resy):
+    res_string = resx + "x" + resy
+    if res_string in SDXL_RES:
+        return (resx, resy)
+    ratios = [1.0, 1.29, 0.78, 1.46, 0.68, 1.75, 0.57, 2.4, 0.42]
+    ratio = round(int(resx)/int(resy), 2)
+    closest = ratios[min(range(len(ratios)), key = lambda i: abs(ratios[i]-ratio))]
+    best = SDXL_RES[ratios.index(closest)]
+    return (int(best.split("x")[0]),int(best.split("x")[1]))
 
 def new_split(value):
     lex = shlex.shlex(value)
