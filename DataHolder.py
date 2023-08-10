@@ -1,12 +1,14 @@
-import sys
-import os
-import requests
-import json
 import base64
-from PIL import Image
+import json
+import os
 import shlex
+import sys
 
-SDXL_RES = ("1024x1024","1152x896","896x1152","1216x832","832x1216","1344x768","768x1344","1536x640","640x1536")
+import requests
+from PIL import Image
+
+SDXL_RES = ("1024x1024", "1152x896", "896x1152", "1216x832", "832x1216", "1344x768", "768x1344", "1536x640", "640x1536")
+
 
 class DataHolder:
     def __init__(self):
@@ -40,7 +42,6 @@ class DataHolder:
         self.model_names = []
         self.is_model_change = False
         self.is_upscale = False
-
 
     def setup(self, message):
         self.reply_string = ""
@@ -132,7 +133,7 @@ class DataHolder:
             if 'conform=' in word:
                 conform = word.split("=")[1]
                 if conform.isnumeric() and int(conform) <= 100:
-                    self.post_obj['cfg_scale']= int(conform)
+                    self.post_obj['cfg_scale'] = int(conform)
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
 
             if 'res=' in word:
@@ -160,7 +161,7 @@ class DataHolder:
                     '}') > self.prompt_no_args.index('{'):
                 exclude = self.original_prompt.split('{', 1)[1].split('}', 1)[0]
                 self.prompt_no_args = self.prompt_no_args.replace('{' + exclude + '}', "")
-                self.post_obj['negative_prompt']= exclude
+                self.post_obj['negative_prompt'] = exclude
 
             if 'loops=' in word:
                 self.num_loop = word.split("=")[1]
@@ -175,7 +176,7 @@ class DataHolder:
                 # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
                 # i can remove the word from prompt_no_args
                 equalsind = word.index('=')
-                word = word[:equalsind+1]+'"'+word[equalsind+1:]+'"'
+                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
                 sampler = word.split("=")[1]
                 # remove quotation marks
@@ -200,11 +201,12 @@ class DataHolder:
                 style = style.replace('"', '')
                 for default_style in self.style_names:
                     if default_style.lower() == style.lower():
-                        self.post_obj['styles'] = "["+default_style+"]"
+                        self.post_obj['styles'] = "[" + default_style + "]"
                         break
                 if style.lower() not in map(str.lower, self.style_names):
-                    await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
-                                        "style name matches one of: \n" + ", ".join(self.style_names))
+                    await message.reply(
+                        "Style name \"" + style + "\" not found. Ignoring this parameter. Please make sure "
+                                                  "style name matches one of: \n" + ", ".join(self.style_names))
 
             if 'style2=' in word:
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
@@ -221,8 +223,19 @@ class DataHolder:
                         self.post_obj['data'][self.style2_ind] = default_style
                         break
                 if style.lower() not in map(str.lower, self.style_names):
-                    await message.reply("Style name \""+style+"\" not found. Ignoring this parameter. Please make sure "
-                                        "style name matches one of: \n" + ", ".join(self.style_names))
+                    await message.reply(
+                        "Style name \"" + style + "\" not found. Ignoring this parameter. Please make sure "
+                                                  "style name matches one of: \n" + ", ".join(self.style_names))
+            if 'sr=' in word:
+                self.prompt_no_args = self.prompt_no_args.replace(word, '')
+                # absolutely wretched
+                self.post_obj['script_name'] = 'x/y/z plot'
+                self.post_obj['script_args'] = [7, word.split('=')[1][1:-1], '',
+                                                0, '', '',
+                                                0, '', '',
+                                                True, False,
+                                                False, False, 0]
+
         self.post_obj['prompt'] = self.prompt_no_args
         self.post_obj['save_images'] = True
 
@@ -267,7 +280,6 @@ class DataHolder:
         # get the resolution of the original image, make the new image have the same resolution, adjusted to closest 64
         img = Image.open("attachment.png")
 
-
     # the json object for upscaling an image is different from the json object for generating an image.
     # this method sets up the json object for upscaling an image
     async def upscalejson(self):
@@ -302,7 +314,6 @@ def convertpng2txtfile(imgdata):
         textfile.write(encodedattachment)
 
 
-
 # computes the aspect ratio of the requested resolution, then returns the closest value
 # in the list of supported SDXL resolutions
 def nearest_sdxl(resx, resy):
@@ -310,10 +321,11 @@ def nearest_sdxl(resx, resy):
     if res_string in SDXL_RES:
         return resx, resy
     ratios = [1.0, 1.29, 0.78, 1.46, 0.68, 1.75, 0.57, 2.4, 0.42]
-    ratio = round(int(resx)/int(resy), 2)
-    closest = ratios[min(range(len(ratios)), key = lambda i: abs(ratios[i]-ratio))]
+    ratio = round(int(resx) / int(resy), 2)
+    closest = ratios[min(range(len(ratios)), key=lambda i: abs(ratios[i] - ratio))]
     best = SDXL_RES[ratios.index(closest)]
     return int(best.split("x")[0]), int(best.split("x")[1])
+
 
 def new_split(value):
     lex = shlex.shlex(value)
