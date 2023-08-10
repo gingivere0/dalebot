@@ -47,6 +47,7 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "\"cartoon\" has been set; remove that parameter otherwise):\n" \
              "!dale firetruck conform=20 num=4 samples=15 res=832x256 sampler=\"DPM2 a Karras\" {birds} " \
              "style1=\"cartoon\" "
+helpstring = helpstring.replace("!dale", TRIGGER)
 
 data_holder = DataHolder()
 s = requests.Session()
