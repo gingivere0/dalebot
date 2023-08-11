@@ -1,3 +1,5 @@
+import time
+
 import discord
 import os
 from dotenv import load_dotenv
@@ -6,9 +8,6 @@ import json
 from pathlib import Path
 
 from DataHolder import DataHolder
-
-from datetime import date
-import glob
 
 from PIL import Image
 import io
@@ -30,7 +29,7 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "More complicated requests have the following options:\n\n" \
              "conform=1-30, describes how much the AI should conform to the prompt. Defaults to 7\n" \
              "num=1-16, describes how many pictures to generate. Defaults to 1\n" \
-             "samples=1-100, describes how many times the ai should run over the picture. Defaults to 30\n" \
+             "steps=1-100, describes how many times the ai should run over the picture. Defaults to 30\n" \
              "res=1-1600x1-1600, describes the resolution of the image. Defaults to 1024x1024\n" \
              "dn=0-1, describes the denoising amount when generating based off an existing image. Higher means more " \
              "changes. Defaults to 0.45\n" \
@@ -40,12 +39,12 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "sampler=\"Euler a\", describes the sampling method to use. there are a lot, so type sampler=help to " \
              "get a full list\n" \
              "{exclude this}, use curly braces to define words that you want the AI to exclude during generation\n\n" \
-             "Higher numbers for num and samples mean longer generation times.\n" \
+             "Higher numbers for num and steps mean longer generation times.\n" \
              "Click the die emote on my messages to reroll the same prompt with a different seed.\n" \
              "Respond to my messages with \"!dale extra words\" to include extra words in a previous prompt.\n" \
              "Example of a complicated request (will take a couple minutes to reply. only works if a style name " \
              "\"cartoon\" has been set; remove that parameter otherwise):\n" \
-             "!dale firetruck conform=20 num=4 samples=15 res=832x256 sampler=\"DPM2 a Karras\" {birds} " \
+             "!dale firetruck conform=20 num=4 steps=15 res=832x256 sampler=\"DPM2 a Karras\" {birds} " \
              "style1=\"cartoon\" "
 helpstring = helpstring.replace("!dale", TRIGGER)
 
@@ -108,12 +107,6 @@ async def get_all_parent_contents(message):
 
 @bot.event
 async def on_message(message):
-    # post_obj['data'][4] = 20
-    # post_obj['data'][8] = 1
-    # post_obj['data'][10] = 10
-    # post_obj['data'][16] = 512
-    # post_obj['data'][17] = 512
-
     print(f'Message received: {message.content}')
 
     # ignore messages from the bot
@@ -143,7 +136,7 @@ async def on_message(message):
             data_holder.post_obj = {}
 
         if not is_upscale:
-            await data_holder.wordparse(message)
+            await data_holder.wordparse()
 
         await postresponse(message)
 
@@ -172,46 +165,17 @@ async def postresponse(message):
     if "Seed:" in responsestr:
         seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
 
-    # loops an image back into the AI
-    # if data_holder.num_loops.isnumeric() and int(data_holder.num_loops) > 1:
-    #     if int(data_holder.num_loops) > 15:
-    #         data_holder.num_loops = "15"
-    #     for x in range(0, int(data_holder.num_loops) - 1):
-    #         # if the original message doesn't have an attachment, we have to run the setup on the post_obj
-    #         if len(message.attachments) == 0:
-    #             message.attachments = [1]
-    #             convertpng2txtfile(imgdata)
-    #             data_holder.attachedjsonframework()
-    #             await data_holder.wordparse(message)
-    #         with open("attachment.txt", "r") as textfile:
-    #             data_holder.post_obj['data'][4] = "data:image/png;base64," + textfile.read()
-    #         data_holder.post_obj['data'][data_holder.prompt_ind] = data_holder.prompt_no_args
-    #         response = requests.post(url, json=data_holder.post_obj)
-    #         responsestr = json.dumps(response.json())
-    #         seed = ""
-    #         if "Seed:" in responsestr:
-    #             seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
-    #         imgdata = base64.b64decode(response.json()['data'][0][0][22:])
-    #         filename = "testimg.png"
-    #         with open(filename, "wb") as f:
-    #             f.write(imgdata)
-
+    fn = 'outputs/{ms}.png'.format(ms=round(time.time() * 1000))
     try:
         if not data_holder.is_model_change:
             i = response.json()['images'][0]
             image = Image.open(io.BytesIO(base64.b64decode(i.split(",", 1)[0])))
             print(len(i))
-            image.save('output.png')
-
-            #picture = discord.File(os.getenv("SDLOC")+"\\"+response.json()['data'][0][0]['name'])
-            picture = discord.File("output.png")
 
 
-            # hugh's solution:
-            # folder = os.getenv("SDLOC") + "\\outputs\\txt2img-images\\" + str(date.today()) + "\\*"
-            # list_of_files = glob.glob(folder)
-            # latest_file = max(list_of_files, key=os.path.getctime)
-            # picture = discord.File(latest_file)
+            image.save(fn)
+            picture = discord.File(fn)
+
     except Exception as e:
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("❌")
@@ -224,6 +188,5 @@ async def postresponse(message):
         await replied_message.add_reaction("🔎")
     elif not data_holder.is_model_change:
         await message.reply(file=picture)
-
 
 bot.run(DISCORD_TOKEN)
