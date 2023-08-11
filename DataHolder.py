@@ -3,6 +3,7 @@ import json
 import os
 import shlex
 import sys
+import re
 
 import requests
 from PIL import Image
@@ -12,32 +13,17 @@ SDXL_RES = ("1024x1024", "1152x896", "896x1152", "1216x832", "832x1216", "1344x7
 
 class DataHolder:
     def __init__(self):
+        self.prompt = ""
+        self.arguments = []
         self.prompt_no_args = ""
         self.original_prompt = ""
         self.words = ""
         self.post_obj = None
-        self.prompt_ind = 0
-        self.sample_ind = 4
-        self.num_ind = 8
-        self.conform_ind = 10
-        self.resx_ind = 18
-        self.resy_ind = 17
-        self.seed_ind = 11
-        self.data_ind = 5
         self.num_loop = ""
         self.denoise_bool = False
         self.reply_string = ""
-        self.original_message_id = -1
-        self.exclude_ind = 1
-        self.denoise_ind = 19
-        self.resize_ind = 6
-        self.script_ind = 35
-        self.loop_ind = 42
         self.is_looping = False
         self.sampling_methods = []
-        self.sampling_methods_ind = 5
-        self.style1_ind = 3
-        self.style2_ind = 4
         self.style_names = []
         self.model_names = []
         self.is_model_change = False
@@ -47,47 +33,89 @@ class DataHolder:
         self.reply_string = ""
         self.original_prompt = self.reply_string + message
         self.prompt_no_args = self.reply_string + message
-        # split on spaces, removes quotes
-        # put the quotes back in because I didn't want them gone. I couldn't find a better way to do this
-        # for i in range(0, len(self.words)):
-        #     if "=" in self.words[i] and " " in self.words[i]:
-        #         equalsind = self.words[i].index("=")
-        #         self.words[i] = self.words[i][:equalsind + 1] + '"' + self.words[i][equalsind + 1:] + '"'
-        tempString = self.original_prompt
-        if "=\"" in tempString:
-            equalsind = tempString.index("=\"")
-            tempString = tempString[:equalsind + 1] + " " + tempString[equalsind + 1:]
 
-        self.words = new_split(tempString)
-        for i in range(0, len(self.words)):
-            if i >= len(self.words):
-                break
-            if self.words[i][-1] == "=" and i + 1 <= len(self.words):
-                self.words[i] += self.words[i + 1]
-                del self.words[i + 1]
+        # find anything in curly braces (negative prompt)
+        # split the message string (sans negative) into the prompt and a list of tuples
+        # containing options (e.g. "res=") and parameters (e.g. "512x512")
+        negatives = re.findall(r'({.+})', self.original_prompt)
+        negative = "" if len(negatives) == 0 else negatives[0]
+        fragments = re.split(r'\s\w+=', self.original_prompt.replace(negative, ""))
+        options = re.findall(r'(\w+=)', self.original_prompt)
+        self.prompt = fragments[0]
+        self.arguments = list(zip(options, fragments[1:]))
+        if negative != "":
+            self.arguments.append(('negative=', negative[1:-1]))
+
         self.num_loop = ""
         self.denoise_bool = False
         self.is_looping = False
         self.is_model_change = False
         self.is_upscale = False
 
-        # self.prompt_ind = 0
-        # self.sample_ind = 4
-        # self.num_ind = 8
-        # self.conform_ind = 10
-        # self.resx_ind = 18
-        # self.resy_ind = 17
-        # self.seed_ind = 11
-        # self.exclude_ind = 1
-        # self.denoise_ind = 19
-
-        # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.TXT2IMG)
-
     # removes parameters from the prompt and parses them accordingly
-    async def wordparse(self, message):
+    async def wordparse(self):
+        self.post_obj['prompt'] = self.prompt
         self.post_obj['width'] = 1024
         self.post_obj['height'] = 1024
         self.post_obj['steps'] = 30
+        self.post_obj['save_images'] = True
+        for arg in self.arguments:
+            if arg[0] == 'model=':
+                print("change model")
+
+            if arg[0] == 'hd=':
+                hd = arg[1]
+                if hd.isnumeric() and int(hd) <= 100:
+                    self.post_obj['enable_hr'] = int(hd)
+
+            if arg[0] == 'steps=':
+                steps = arg[1]
+                if steps.isnumeric() and int(steps) <= 100:
+                    self.post_obj['steps'] = int(steps)
+
+            if arg[0] == 'num=':
+                numpics = arg[1]
+                if numpics.isnumeric() and int(numpics) < 17:
+                    self.post_obj['batch_size'] = int(numpics)
+
+            if arg[0] == 'conform=':
+                conform = arg[1]
+                if conform.isnumeric() and int(conform) <= 100:
+                    self.post_obj['cfg_scale'] = int(conform)
+
+            if arg[0] == 'res=':
+                resolution = arg[1]
+                resx = resolution.split("x")[0]
+                resy = resolution.split("x")[1]
+                closest_resolution = nearest_sdxl(resx, resy)
+                self.post_obj['width'] = closest_resolution[0]
+                self.post_obj['height'] = closest_resolution[1]
+
+            if arg[0] == 'dn=':
+                dn = arg[1]
+                if float(dn) <= 1 and self.denoise_bool:
+                    self.post_obj['denoising_strength'] = float(dn)
+
+            if arg[0] == 'seed=':
+                seed = arg[1]
+                self.post_obj['seed'] = int(seed) if int(
+                    seed) < sys.maxsize else sys.maxsize - 1
+
+            if arg[0] == 'negative=':
+                exclude = arg[1]
+                self.post_obj['negative_prompt'] = exclude
+
+            if arg[0] == 'sr=':
+                # absolutely wretched
+                self.post_obj['script_name'] = 'x/y/z plot'
+                self.post_obj['script_args'] = [7, arg[1][1:-1], '',
+                                                0, '', '',
+                                                0, '', '',
+                                                True, False,
+                                                False, False, 0]
+
+    # removes parameters from the prompt and parses them accordingly
+    async def wordparseX(self, message):
         for word in self.words:
             if 'model=' in word:
                 # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
@@ -111,57 +139,6 @@ class DataHolder:
                     "Model name \"" + model + "\" not found. Please make sure "
                                               "model name matches one of: \n" + ", ".join(self.model_names))
                 return
-
-            if 'hd=' in word:
-                hd = word.split("=")[1]
-                if hd.isnumeric() and int(hd) <= 100:
-                    self.post_obj['enable_hr'] = int(hd)
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-
-            if 'samples=' in word:
-                samples = word.split("=")[1]
-                if samples.isnumeric() and int(samples) <= 100:
-                    self.post_obj['steps'] = int(samples)
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-
-            if 'num=' in word:
-                numpics = word.split("=")[1]
-                if numpics.isnumeric() and int(numpics) < 17:
-                    self.post_obj['batch_size'] = int(numpics)
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-
-            if 'conform=' in word:
-                conform = word.split("=")[1]
-                if conform.isnumeric() and int(conform) <= 100:
-                    self.post_obj['cfg_scale'] = int(conform)
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-
-            if 'res=' in word:
-                resolution = word.split("=")[1]
-                resx = resolution.split("x")[0]
-                resy = resolution.split("x")[1]
-                closest_resolution = nearest_sdxl(resx, resy)
-                self.post_obj['width'] = closest_resolution[0]
-                self.post_obj['height'] = closest_resolution[1]
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-
-            if 'dn=' in word:
-                dn = word.split("=")[1]
-                if float(dn) <= 1 and self.denoise_bool:
-                    self.post_obj['denoising_strength'] = float(dn)
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-
-            if 'seed=' in word:
-                seed = word.split("=")[1]
-                self.post_obj['seed'] = int(seed) if int(
-                    seed) < sys.maxsize else sys.maxsize - 1
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-
-            if '{' in self.prompt_no_args and '}' in self.prompt_no_args and self.prompt_no_args.index(
-                    '}') > self.prompt_no_args.index('{'):
-                exclude = self.original_prompt.split('{', 1)[1].split('}', 1)[0]
-                self.prompt_no_args = self.prompt_no_args.replace('{' + exclude + '}', "")
-                self.post_obj['negative_prompt'] = exclude
 
             if 'loops=' in word:
                 self.num_loop = word.split("=")[1]
@@ -226,15 +203,6 @@ class DataHolder:
                     await message.reply(
                         "Style name \"" + style + "\" not found. Ignoring this parameter. Please make sure "
                                                   "style name matches one of: \n" + ", ".join(self.style_names))
-            if 'sr=' in word:
-                self.prompt_no_args = self.prompt_no_args.replace(word, '')
-                # absolutely wretched
-                self.post_obj['script_name'] = 'x/y/z plot'
-                self.post_obj['script_args'] = [7, word.split('=')[1][1:-1], '',
-                                                0, '', '',
-                                                0, '', '',
-                                                True, False,
-                                                False, False, 0]
 
         self.post_obj['prompt'] = self.prompt_no_args
         self.post_obj['save_images'] = True
