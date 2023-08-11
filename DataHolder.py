@@ -76,7 +76,7 @@ class DataHolder:
             if arg[0] == 'num=':
                 numpics = arg[1]
                 if numpics.isnumeric() and int(numpics) < 17:
-                    self.post_obj['batch_size'] = int(numpics)
+                    self.post_obj['n_iter'] = int(numpics)
 
             if arg[0] == 'conform=':
                 conform = arg[1]
