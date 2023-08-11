@@ -1,5 +1,3 @@
-import time
-
 import discord
 import os
 from dotenv import load_dotenv
@@ -9,7 +7,6 @@ from pathlib import Path
 
 from DataHolder import DataHolder
 
-from PIL import Image
 import io
 import base64
 
@@ -24,6 +21,8 @@ TRIGGER = os.getenv("TRIGGER")
 bot = discord.Client(intents=discord.Intents.all())
 
 url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+
+log = True
 
 helpstring = "Hi! For a simple request, you can type something like \"!dale firetruck\"\n" \
              "More complicated requests have the following options:\n\n" \
@@ -155,38 +154,36 @@ async def on_message(message):
 async def postresponse(message):
     print(data_holder.post_obj)
     global s
-    with open("log/post_obj.json", "w") as f:
-        f.write(json.dumps(data_holder.post_obj, indent=2))
+    if log:
+        with open("log/post_obj.json", "w") as f:
+            f.write(json.dumps(data_holder.post_obj, indent=2))
     response = s.post(url, json=data_holder.post_obj, timeout=300)
-    responsestr = json.dumps(response.json(), indent=2)
-    with open("log/responsejson.json", "w") as f:
-        f.write(responsestr)
-    seed = ""
-    if "Seed:" in responsestr:
-        seed = responsestr.split("Seed:", 1)[-1].split()[0][:-1]
+    r_json = response.json()
+    if log:
+        with open("log/responsejson.json", "w") as f:
+            f.write(json.dumps(r_json, indent=2))
 
-    fn = 'outputs/{ms}.png'.format(ms=round(time.time() * 1000))
+    seed = json.loads(r_json['info']).get('seed', 0)
+
     try:
         if not data_holder.is_model_change:
-            i = response.json()['images'][0]
-            image = Image.open(io.BytesIO(base64.b64decode(i.split(",", 1)[0])))
-            print(len(i))
-
-
-            image.save(fn)
-            picture = discord.File(fn)
-
+            img_bytes = io.BytesIO(base64.b64decode(r_json['images'][0]))
+            picture = discord.File(img_bytes)
+        if seed > 0:
+            with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
+                pic = discord.File(img_bytes, 'dale.png')
+                replied_message = await message.reply("seed=" + str(seed),file=pic)
+            await replied_message.add_reaction("🎲")
+            await replied_message.add_reaction("🔎")
+        elif not data_holder.is_model_change:
+            with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
+                pic = discord.File(img_bytes, 'dale.png')
+                await message.reply(file=pic)
     except Exception as e:
         await message.remove_reaction("🔄", bot.user)
         await message.add_reaction("❌")
         print(type(e))
         print(e)
         return
-    if len(seed) > 0:
-        replied_message = await message.reply("seed=" + seed, file=picture)
-        await replied_message.add_reaction("🎲")
-        await replied_message.add_reaction("🔎")
-    elif not data_holder.is_model_change:
-        await message.reply(file=picture)
 
 bot.run(DISCORD_TOKEN)
