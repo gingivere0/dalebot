@@ -20,7 +20,7 @@ TRIGGER = os.getenv("TRIGGER")
 
 bot = discord.Client(intents=discord.Intents.all())
 
-url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+url = 'http://127.0.0.1:7860'
 
 log = True
 
@@ -54,11 +54,11 @@ s = requests.Session()
 @bot.event
 async def on_ready():
     global s
-    if json.loads(s.get("http://127.0.0.1:7860/config").content).get("detail") == "Not authenticated":
+    if json.loads(s.get(url + '/config').content).get("detail") == "Not authenticated":
         headers = {"Connection": "keep-alive", "Host": "127.0.0.1:7860"}
         payload = {'username': USERNAME, 'password': PASSWORD}
 
-        res = s.post('http://127.0.0.1:7860/login', headers=headers, data=payload)
+        res = s.post(url + '/login', headers=headers, data=payload)
         try:
             if json.loads(res.content).get("detail") == "Incorrect credentials.":
                 print("Incorrect credentials. Please make sure the user and pass in .env match the user and pass given "
@@ -93,6 +93,15 @@ async def on_reaction_add(reaction, user):
             await reaction.message.remove_reaction("🔄", bot.user)
             await reaction.message.add_reaction("✅")
 
+        if reaction.emoji == "X🪩":
+            await reaction.message.add_reaction("🔄")
+            parent_message = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
+            await on_message(parent_message)
+            await data_holder.messageattachments(reaction.message)
+            await postresponse(reaction.message)
+            await reaction.message.remove_reaction("🔄", bot.user)
+            await reaction.message.add_reaction("✅")
+
 
 # include prompts from the parent messages in the current prompt
 async def get_all_parent_contents(message):
@@ -120,7 +129,7 @@ async def on_message(message):
 
         await message.add_reaction("🔄")
 
-        await bot.change_presence(activity=discord.Game('with myself: ' + message.content))
+        # await bot.change_presence(activity=discord.Game('with myself: ' + message.content))
 
         # set the default indices in case the previous prompt wasn't default
         data_holder.setup(message.content[len(TRIGGER)+1:])
@@ -147,7 +156,6 @@ async def on_message(message):
         if len(message.content[len(TRIGGER)+1:].split()) > 0 and "help" in message.content[len(TRIGGER)+1:].split()[0]:
             await message.channel.send(helpstring)
 
-
 # sends post_obj to the AI, gets a response,
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
@@ -157,7 +165,7 @@ async def postresponse(message):
     if log:
         with open("log/post_obj.json", "w") as f:
             f.write(json.dumps(data_holder.post_obj, indent=2))
-    response = s.post(url, json=data_holder.post_obj, timeout=300)
+    response = s.post(url + '/sdapi/v1/txt2img', json=data_holder.post_obj, timeout=300)
     r_json = response.json()
     if log:
         with open("log/responsejson.json", "w") as f:
@@ -175,6 +183,7 @@ async def postresponse(message):
                 replied_message = await message.reply("seed=" + str(seed),file=pic)
             await replied_message.add_reaction("🎲")
             await replied_message.add_reaction("🔎")
+            await replied_message.add_reaction("🪩")
         elif not data_holder.is_model_change:
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
                 pic = discord.File(img_bytes, 'dale.png')
@@ -185,5 +194,13 @@ async def postresponse(message):
         print(type(e))
         print(e)
         return
+
+# retrieves loras, styles, and samplers
+async def load_available_settings():
+    global s
+    loras    = s.get(url + '/sdapi/v1/loras').json()
+    styles   = s.get(url + '/sdapi/v1/prompt-styles').json()
+    samplers = s.get(url + '/sdapi/v1/samplers').json()
+    print(loras, styles, samplers)
 
 bot.run(DISCORD_TOKEN)
