@@ -122,18 +122,15 @@ async def on_message(message):
         return
 
     if message.content[0:len(TRIGGER)] == TRIGGER:
-
         # get previous prompts if this message is a response to another message
         if message.reference is not None:
             await get_all_parent_contents(await message.channel.fetch_message(message.reference.message_id))
 
         await message.add_reaction("🔄")
-
         # await bot.change_presence(activity=discord.Game('with myself: ' + message.content))
 
         # set the default indices in case the previous prompt wasn't default
         data_holder.setup(message.content[len(TRIGGER)+1:])
-
 
         # messages with attachments have different post_obj formats
         # if the message is an upscale or img2img, format post_obj accordingly
@@ -171,7 +168,14 @@ async def postresponse(message):
         with open("log/responsejson.json", "w") as f:
             f.write(json.dumps(r_json, indent=2))
 
-    seed = json.loads(r_json['info']).get('seed', 0)
+    try:
+        seed = json.loads(r_json['info']).get('seed', 0)
+    except Exception as e:
+        await message.remove_reaction("🔄", bot.user)
+        await message.add_reaction("❌")
+        print(type(e))
+        print(e)
+        return
 
     try:
         if not data_holder.is_model_change:
