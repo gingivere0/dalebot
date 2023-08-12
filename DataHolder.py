@@ -22,7 +22,7 @@ class DataHolder:
         self.num_loop = ""
         self.denoise_bool = False
         self.reply_string = ""
-        self.is_looping = False
+        self.is_loopback = False
         self.lora_names = []
         self.style_names = []
         self.sampling_methods = []
@@ -49,7 +49,6 @@ class DataHolder:
 
         self.num_loop = ""
         self.denoise_bool = False
-        self.is_looping = False
         self.is_model_change = False
         self.is_upscale = False
 
@@ -115,13 +114,11 @@ class DataHolder:
                 # absolutely wretched
                 self.post_obj['script_name'] = 'x/y/z plot'
                 self.post_obj['script_args'] = self.xyz_plot_args(7, arg[1][1:-1])
-                # self.post_obj['script_args'] = [7, arg[1][1:-1], '',
-                #                                 0, '', '',
-                #                                 0, '', '',
-                #                                 True, False,
-                #                                 False, False, 0]
 
-            # if arg[0] == 'loops':
+            if arg[0] == 'loops=':
+                self.post_obj['script_name'] = 'loopback'
+                self.post_obj['script_args'] = self.loopback_args(arg[1])
+
             #
             #
             # if 'loops=' in word:
@@ -131,6 +128,8 @@ class DataHolder:
             #         self.post_obj['data'][self.script_ind] = "Loopback"
             #         self.post_obj['data'][self.loop_ind] = int(self.num_loop)
 
+    def loopback_args(self, loops, final=0.5, curve=1, interrogator=0):
+        return [loops, final, curve, interrogator]
 
     # generates the list of args for an xyz plot
     def xyz_plot_args(self, x_type, x_vals,
@@ -285,23 +284,6 @@ class DataHolder:
         # upscale up to 10 times if an is_upscale factor is included
         if len(self.words) > 1 and self.words[1].isnumeric() and float(self.words[1]) <= 10:
             self.post_obj['data'][self.resize_ind] = int(self.words[1])
-
-
-# write attachment to file as image, then read image from file and write string to file as base64encoded bytes
-# this is a function is a setup for later, as attachment.txt will be read from and passed as an image data string.
-# there must be a better way to do this
-def convertpng2txtfile(imgdata):
-    if os.path.exists("attachment.png"):
-        os.remove("attachment.png")
-    with open("attachment.png", "wb") as imgfile:
-        imgfile.write(imgdata)
-    encodedattachment = base64.b64encode(open("attachment.png", "rb").read())
-    if os.path.exists("attachmentstring.txt"):
-        #os.remove("attachmentstring.txt")
-        print("wha")
-    with open("attachmentstring.txt", "wb") as textfile:
-        textfile.write(encodedattachment)
-
 
 # computes the aspect ratio of the requested resolution, then returns the closest value
 # in the list of supported SDXL resolutions
