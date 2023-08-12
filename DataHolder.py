@@ -1,19 +1,14 @@
-import base64
 import json
-import os
-import shlex
 import sys
 import re
-
 import requests
-from PIL import Image
+import base64
 
 SDXL_RES = ("1024x1024", "1152x896", "896x1152", "1216x832", "832x1216", "1344x768", "768x1344", "1536x640", "640x1536")
 
 
 class DataHolder:
     def __init__(self):
-        self.prompt = ""
         self.arguments = []
         self.prompt_no_args = ""
         self.original_prompt = ""
@@ -29,8 +24,36 @@ class DataHolder:
         self.model_names = []
         self.is_model_change = False
         self.is_upscale = False
+        self.attachment = None
+        self.endpoint = '/sdapi/v1/txt2img'
+
+    # reset to default values
+    def reset(self):
+        self.arguments = []
+        self.prompt_no_args = ""
+        self.original_prompt = ""
+        self.words = ""
+        self.post_obj = {
+            'width': 1024,
+            'height': 1024,
+            'steps': 30,
+            'save_images': True
+        }
+        self.num_loop = ""
+        self.denoise_bool = False
+        self.reply_string = ""
+        self.is_loopback = False
+        self.lora_names = []
+        self.style_names = []
+        self.sampling_methods = []
+        self.model_names = []
+        self.is_model_change = False
+        self.is_upscale = False
+        self.attachment = None
+        self.endpoint = '/sdapi/v1/txt2img'
 
     def setup(self, message):
+        self.reset()
         self.reply_string = ""
         self.original_prompt = self.reply_string + message
         self.prompt_no_args = self.reply_string + message
@@ -42,28 +65,17 @@ class DataHolder:
         negative = "" if len(negatives) == 0 else negatives[0]
         fragments = re.split(r'\s\w+=', self.original_prompt.replace(negative, ""))
         options = re.findall(r'(\w+=)', self.original_prompt)
-        self.prompt = fragments[0]
+        self.post_obj['prompt'] = fragments[0]
         self.arguments = list(zip(options, fragments[1:]))
         if negative != "":
             self.arguments.append(('negative=', negative[1:-1]))
-
-        self.num_loop = ""
-        self.denoise_bool = False
-        self.is_model_change = False
-        self.is_upscale = False
 
     def set_available_options(self, loras, styles, samplers):
         self.lora_names = [l['alias'] for l in loras]
         self.style_names = [s['name'] for s in styles]
 
-
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self):
-        self.post_obj['prompt'] = self.prompt
-        self.post_obj['width'] = 1024
-        self.post_obj['height'] = 1024
-        self.post_obj['steps'] = 30
-        self.post_obj['save_images'] = True
         for arg in self.arguments:
             if arg[0] == 'model=':
                 print("change model")
@@ -113,33 +125,18 @@ class DataHolder:
             if arg[0] == 'sr=':
                 # absolutely wretched
                 self.post_obj['script_name'] = 'x/y/z plot'
-                self.post_obj['script_args'] = self.xyz_plot_args(7, arg[1][1:-1])
+                self.post_obj['script_args'] = xyz_plot_args(7, arg[1][1:-1])
 
-            if arg[0] == 'loops=':
+            if arg[0] == 'loops=' and self.attachment is not None:
                 self.post_obj['script_name'] = 'loopback'
-                self.post_obj['script_args'] = self.loopback_args(arg[1])
+                self.post_obj['script_args'] = loopback_args(int(arg[1]))
 
-            #
-            #
-            # if 'loops=' in word:
-            #     self.num_loop = word.split("=")[1]
-            #     self.prompt_no_args = self.prompt_no_args.replace(word, "")
-            #     if len(message.attachments) > 0:
-            #         self.post_obj['data'][self.script_ind] = "Loopback"
-            #         self.post_obj['data'][self.loop_ind] = int(self.num_loop)
-
-    def loopback_args(self, loops, final=0.5, curve=1, interrogator=0):
-        return [loops, final, curve, interrogator]
-
-    # generates the list of args for an xyz plot
-    def xyz_plot_args(self, x_type, x_vals,
-                         y_type=0, y_vals='',
-                         z_type=0, z_vals=''):
-        return [x_type, x_vals, '',
-                y_type, y_vals, '',
-                z_type, z_vals, '',
-                True, False, False, False, 0]
-
+        if self.attachment is not None:
+            if self.is_upscale:
+                print('do upscale things')
+            else:
+                self.post_obj['init_images'] = [str(self.attachment)[2:-1]]
+                self.endpoint = '/sdapi/v1/img2img'
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparseX(self, message):
@@ -223,67 +220,29 @@ class DataHolder:
                         "Style name \"" + style + "\" not found. Ignoring this parameter. Please make sure "
                                                   "style name matches one of: \n" + ", ".join(self.style_names))
 
-        self.post_obj['prompt'] = self.prompt_no_args
-        self.post_obj['save_images'] = True
+    async def add_attachment(self, url):
+        try:
+            img_bytes = requests.get(url).content
+        except Exception as e:
+            print(e)
+            return
+        self.attachment = base64.b64encode(img_bytes)
 
-    # attachments can either be upscales or part of a prompt
-    # returns if is an is_upscale
-    async def messageattachments(self, message):
 
-        convertpng2txtfile(requests.get(message.attachments[0].url).content)
+# generates the list of args for a loopback
+def loopback_args(loops, final=0.5, curve=1, interrogator=0):
+    return [loops, final, curve, interrogator]
 
-        if (len(self.words) >= 1 and self.words[0] == "upscale") or self.is_upscale:
-            await self.upscalejson()
-            return True
 
-        self.attachedjsonframework()
+# generates the list of args for an xyz plot
+def xyz_plot_args(x_type, x_vals,
+                  y_type=0, y_vals='',
+                  z_type=0, z_vals=''):
+    return [x_type, x_vals, '',
+            y_type, y_vals, '',
+            z_type, z_vals, '',
+            True, False, False, False, 0]
 
-        return False
-
-    # the json object for using an image as a prompt is different from the json object for using just text.
-    # this method is setting up the json object for when there is an image as a prompt
-    def attachedjsonframework(self):
-        # open post_obj template for image prompts
-        f = open('imgdata.json')
-        self.post_obj = json.load(f)
-        f.close()
-
-        # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.IMG2IMG)
-
-        with open("attachmentstring.txt", "r") as textfile:
-            self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
-
-        # assign variable indices for image prompt json format
-        # self.sample_ind = 10
-        # self.num_ind = 16
-        # self.conform_ind = 18
-        # self.resx_ind = 27
-        # self.resy_ind = 26
-        # self.seed_ind = 20
-        # self.exclude_ind = 2
-
-        self.denoise_bool = True
-
-        # get the resolution of the original image, make the new image have the same resolution, adjusted to closest 64
-        img = Image.open("attachment.png")
-
-    # the json object for upscaling an image is different from the json object for generating an image.
-    # this method sets up the json object for upscaling an image
-    async def upscalejson(self):
-        # load the base json template for the is_upscale
-        f = open('updata.json')
-        self.post_obj = json.load(f)
-        f.close()
-
-        # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.UPSCALE)
-
-        with open("attachmentstring.txt", "r") as textfile:
-            self.post_obj['data'][self.data_ind] = "data:image/png;base64," + textfile.read()
-            # self.post_obj['data'][10] = "[\n\"data:image/png;base64," + textfile.read()+"\"\n]"
-
-        # upscale up to 10 times if an is_upscale factor is included
-        if len(self.words) > 1 and self.words[1].isnumeric() and float(self.words[1]) <= 10:
-            self.post_obj['data'][self.resize_ind] = int(self.words[1])
 
 # computes the aspect ratio of the requested resolution, then returns the closest value
 # in the list of supported SDXL resolutions
@@ -296,4 +255,3 @@ def nearest_sdxl(resx, resy):
     closest = ratios[min(range(len(ratios)), key=lambda i: abs(ratios[i] - ratio))]
     best = SDXL_RES[ratios.index(closest)]
     return int(best.split("x")[0]), int(best.split("x")[1])
-

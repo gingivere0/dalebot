@@ -88,7 +88,7 @@ async def on_reaction_add(reaction, user):
             await reaction.message.add_reaction("🔄")
             data_holder.setup(reaction.message)
             data_holder.is_upscale = True
-            await data_holder.messageattachments(reaction.message)
+            await data_holder.add_attachment(reaction.message.attachments[0].url)
             await postresponse(reaction.message)
             await reaction.message.remove_reaction("🔄", bot.user)
             await reaction.message.add_reaction("✅")
@@ -97,7 +97,7 @@ async def on_reaction_add(reaction, user):
             await reaction.message.add_reaction("🔄")
             parent_message = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
             await on_message(parent_message)
-            await data_holder.messageattachments(reaction.message)
+            await data_holder.add_attachment(reaction.message.attachments[0].url)
             await postresponse(reaction.message)
             await reaction.message.remove_reaction("🔄", bot.user)
             await reaction.message.add_reaction("✅")
@@ -106,7 +106,7 @@ async def on_reaction_add(reaction, user):
 # include prompts from the parent messages in the current prompt
 async def get_all_parent_contents(message):
     if message.content[0:len(TRIGGER)] == TRIGGER:
-        data_holder.reply_string = " " + message.content[len(TRIGGER)+1:] + " " + data_holder.reply_string
+        data_holder.reply_string = " " + message.content[len(TRIGGER) + 1:] + " " + data_holder.reply_string
 
     # recursively get prompts from all parent messages in this reply chain
     if message.reference is not None:
@@ -127,21 +127,15 @@ async def on_message(message):
             await get_all_parent_contents(await message.channel.fetch_message(message.reference.message_id))
 
         await message.add_reaction("🔄")
-        # await bot.change_presence(activity=discord.Game('with myself: ' + message.content))
+        await bot.change_presence(activity=discord.Game('🎨'))
 
         # set the default indices in case the previous prompt wasn't default
-        data_holder.setup(message.content[len(TRIGGER)+1:])
+        data_holder.setup(message.content[len(TRIGGER) + 1:])
 
-        # messages with attachments have different post_obj formats
-        # if the message is an upscale or img2img, format post_obj accordingly
-        is_upscale = False
         if len(message.attachments) > 0:
-            is_upscale = await data_holder.messageattachments(message)
-        else:
-            data_holder.post_obj = {}
+            await data_holder.add_attachment(message.attachments[0].url)
 
-        if not is_upscale:
-            await data_holder.wordparse()
+        await data_holder.wordparse()
 
         await postresponse(message)
 
@@ -150,44 +144,33 @@ async def on_message(message):
 
         await bot.change_presence(activity=None)
 
-        if len(message.content[len(TRIGGER)+1:].split()) > 0 and "help" in message.content[len(TRIGGER)+1:].split()[0]:
+        if (len(message.content[len(TRIGGER) + 1:].split()) > 0
+                and "help" in message.content[len(TRIGGER) + 1:].split()[0]):
             await message.channel.send(helpstring)
+
 
 # sends post_obj to the AI, gets a response,
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
 async def postresponse(message):
-    print(data_holder.post_obj)
     global s
     if log:
         with open("log/post_obj.json", "w") as f:
             f.write(json.dumps(data_holder.post_obj, indent=2))
-    response = s.post(url + '/sdapi/v1/txt2img', json=data_holder.post_obj, timeout=300)
-    r_json = response.json()
+    r_json = s.post(url + data_holder.endpoint, json=data_holder.post_obj, timeout=300).json()
     if log:
         with open("log/responsejson.json", "w") as f:
             f.write(json.dumps(r_json, indent=2))
 
     try:
         seed = json.loads(r_json['info']).get('seed', 0)
-    except Exception as e:
-        await message.remove_reaction("🔄", bot.user)
-        await message.add_reaction("❌")
-        print(type(e))
-        print(e)
-        return
-
-    try:
-        if not data_holder.is_model_change:
-            img_bytes = io.BytesIO(base64.b64decode(r_json['images'][0]))
-            picture = discord.File(img_bytes)
         if seed > 0:
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
                 pic = discord.File(img_bytes, 'dale.png')
-                replied_message = await message.reply("seed=" + str(seed),file=pic)
+                replied_message = await message.reply("seed=" + str(seed), file=pic)
             await replied_message.add_reaction("🎲")
             await replied_message.add_reaction("🔎")
-            await replied_message.add_reaction("🪩")
+            # await replied_message.add_reaction("🪩")
         elif not data_holder.is_model_change:
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
                 pic = discord.File(img_bytes, 'dale.png')
@@ -199,11 +182,12 @@ async def postresponse(message):
         print(e)
         return
 
+
 # retrieves loras, styles, and samplers
 async def load_available_settings():
     global s
-    loras    = s.get(url + '/sdapi/v1/loras').json()
-    styles   = s.get(url + '/sdapi/v1/prompt-styles').json()
+    loras = s.get(url + '/sdapi/v1/loras').json()
+    styles = s.get(url + '/sdapi/v1/prompt-styles').json()
     samplers = s.get(url + '/sdapi/v1/samplers').json()
     print(loras, styles, samplers)
 
