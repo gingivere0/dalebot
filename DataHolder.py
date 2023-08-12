@@ -23,8 +23,9 @@ class DataHolder:
         self.denoise_bool = False
         self.reply_string = ""
         self.is_looping = False
-        self.sampling_methods = []
+        self.lora_names = []
         self.style_names = []
+        self.sampling_methods = []
         self.model_names = []
         self.is_model_change = False
         self.is_upscale = False
@@ -51,6 +52,11 @@ class DataHolder:
         self.is_looping = False
         self.is_model_change = False
         self.is_upscale = False
+
+    def set_available_options(self, loras, styles, samplers):
+        self.lora_names = [l['alias'] for l in loras]
+        self.style_names = [s['name'] for s in styles]
+
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self):
@@ -108,11 +114,33 @@ class DataHolder:
             if arg[0] == 'sr=':
                 # absolutely wretched
                 self.post_obj['script_name'] = 'x/y/z plot'
-                self.post_obj['script_args'] = [7, arg[1][1:-1], '',
-                                                0, '', '',
-                                                0, '', '',
-                                                True, False,
-                                                False, False, 0]
+                self.post_obj['script_args'] = self.xyz_plot_args(7, arg[1][1:-1])
+                # self.post_obj['script_args'] = [7, arg[1][1:-1], '',
+                #                                 0, '', '',
+                #                                 0, '', '',
+                #                                 True, False,
+                #                                 False, False, 0]
+
+            # if arg[0] == 'loops':
+            #
+            #
+            # if 'loops=' in word:
+            #     self.num_loop = word.split("=")[1]
+            #     self.prompt_no_args = self.prompt_no_args.replace(word, "")
+            #     if len(message.attachments) > 0:
+            #         self.post_obj['data'][self.script_ind] = "Loopback"
+            #         self.post_obj['data'][self.loop_ind] = int(self.num_loop)
+
+
+    # generates the list of args for an xyz plot
+    def xyz_plot_args(self, x_type, x_vals,
+                         y_type=0, y_vals='',
+                         z_type=0, z_vals=''):
+        return [x_type, x_vals, '',
+                y_type, y_vals, '',
+                z_type, z_vals, '',
+                True, False, False, False, 0]
+
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparseX(self, message):
@@ -139,14 +167,6 @@ class DataHolder:
                     "Model name \"" + model + "\" not found. Please make sure "
                                               "model name matches one of: \n" + ", ".join(self.model_names))
                 return
-
-            if 'loops=' in word:
-                self.num_loop = word.split("=")[1]
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                if len(message.attachments) > 0:
-                    self.post_obj['data'][self.script_ind] = "Loopback"
-                    self.post_obj['data'][self.loop_ind] = int(self.num_loop)
-                # self.is_looping = True
 
             if 'sampler=' in word:
                 self.prompt_no_args = self.prompt_no_args.replace(word, "")
@@ -277,7 +297,8 @@ def convertpng2txtfile(imgdata):
         imgfile.write(imgdata)
     encodedattachment = base64.b64encode(open("attachment.png", "rb").read())
     if os.path.exists("attachmentstring.txt"):
-        os.remove("attachmentstring.txt")
+        #os.remove("attachmentstring.txt")
+        print("wha")
     with open("attachmentstring.txt", "wb") as textfile:
         textfile.write(encodedattachment)
 
@@ -294,10 +315,3 @@ def nearest_sdxl(resx, resy):
     best = SDXL_RES[ratios.index(closest)]
     return int(best.split("x")[0]), int(best.split("x")[1])
 
-
-def new_split(value):
-    lex = shlex.shlex(value)
-    lex.quotes = '"'
-    lex.whitespace_split = True
-    lex.commenters = ''
-    return list(lex)
