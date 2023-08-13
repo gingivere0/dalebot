@@ -70,6 +70,8 @@ async def on_ready():
     Path("log").mkdir(parents=True, exist_ok=True)
     print(f'{bot.user} has logged in.')
 
+    await load_available_settings()
+
 
 # reacting to a dalepost with "🎲" will prompt dale to reroll the prompt with a different seed
 @bot.event
@@ -153,6 +155,7 @@ async def on_message(message):
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
 async def postresponse(message):
+    print(data_holder.post_obj)
     global s
     if log:
         with open("log/post_obj.json", "w") as f:
@@ -189,6 +192,6 @@ async def load_available_settings():
     loras = s.get(url + '/sdapi/v1/loras').json()
     styles = s.get(url + '/sdapi/v1/prompt-styles').json()
     samplers = s.get(url + '/sdapi/v1/samplers').json()
-    print(loras, styles, samplers)
+    data_holder.set_available_options(loras, styles, samplers)
 
 bot.run(DISCORD_TOKEN)
