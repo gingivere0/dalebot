@@ -3,24 +3,23 @@ import sys
 import re
 import requests
 import base64
+import random
 
 SDXL_RES = ("1024x1024", "1152x896", "896x1152", "1216x832", "832x1216", "1344x768", "768x1344", "1536x640", "640x1536")
+SDXL_UNSUPPORTED_SAMPLERS = {'DDIM', 'PLMS', 'UniPC'}
 
 
 class DataHolder:
     def __init__(self):
         self.arguments = []
-        self.prompt_no_args = ""
         self.original_prompt = ""
-        self.words = ""
         self.post_obj = None
-        self.num_loop = ""
         self.denoise_bool = False
         self.reply_string = ""
         self.is_loopback = False
         self.lora_names = []
         self.style_names = []
-        self.sampling_methods = []
+        self.sampler_names = []
         self.model_names = []
         self.is_model_change = False
         self.is_upscale = False
@@ -30,23 +29,17 @@ class DataHolder:
     # reset to default values
     def reset(self):
         self.arguments = []
-        self.prompt_no_args = ""
         self.original_prompt = ""
-        self.words = ""
         self.post_obj = {
             'width': 1024,
             'height': 1024,
             'steps': 30,
+            'styles': [],
             'save_images': True
         }
-        self.num_loop = ""
         self.denoise_bool = False
         self.reply_string = ""
         self.is_loopback = False
-        self.lora_names = []
-        self.style_names = []
-        self.sampling_methods = []
-        self.model_names = []
         self.is_model_change = False
         self.is_upscale = False
         self.attachment = None
@@ -56,7 +49,6 @@ class DataHolder:
         self.reset()
         self.reply_string = ""
         self.original_prompt = self.reply_string + message
-        self.prompt_no_args = self.reply_string + message
 
         # find anything in curly braces (negative prompt)
         # split the message string (sans negative) into the prompt and a list of tuples
@@ -73,6 +65,10 @@ class DataHolder:
     def set_available_options(self, loras, styles, samplers):
         self.lora_names = [l['alias'] for l in loras]
         self.style_names = [s['name'] for s in styles]
+        for s in samplers:
+            if s['name'] not in SDXL_UNSUPPORTED_SAMPLERS:
+                self.sampler_names.append(s['name'])
+        print(self.sampler_names)
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self):
@@ -123,13 +119,27 @@ class DataHolder:
                 self.post_obj['negative_prompt'] = exclude
 
             if arg[0] == 'sr=':
-                # absolutely wretched
                 self.post_obj['script_name'] = 'x/y/z plot'
                 self.post_obj['script_args'] = xyz_plot_args(7, arg[1][1:-1])
 
             if arg[0] == 'loops=' and self.attachment is not None:
                 self.post_obj['script_name'] = 'loopback'
                 self.post_obj['script_args'] = loopback_args(int(arg[1]))
+
+            if arg[0] == 'style1=' or arg[0] == 'style2=':
+                style = arg[1].replace('"', '')
+                if style in self.style_names:
+                    self.post_obj['styles'].append(style)
+
+            if arg[0] == 'sampler=':
+                sampler = arg[1].replace('"', '')
+                if arg[1].lower() == 'platter':
+                    self.post_obj['n_iter'] = 1
+                    self.post_obj['script_name'] = 'x/y/z plot'
+                    random_samplers = random.sample(self.sampler_names, 5)
+                    self.post_obj['script_args'] = xyz_plot_args(9, x_vals_list=random_samplers)
+                elif sampler in self.sampler_names:
+                    self.post_obj['sampler_name'] = sampler
 
         if self.attachment is not None:
             if self.is_upscale:
@@ -164,62 +174,6 @@ class DataHolder:
                                               "model name matches one of: \n" + ", ".join(self.model_names))
                 return
 
-            if 'sampler=' in word:
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
-                # i can remove the word from prompt_no_args
-                equalsind = word.index('=')
-                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                sampler = word.split("=")[1]
-                # remove quotation marks
-                sampler = sampler.replace('"', '')
-                for default_sampler in self.sampling_methods:
-                    if default_sampler.lower() == sampler.lower():
-                        self.post_obj['hr_sampler_name'] = default_sampler
-                        break
-                if sampler.lower() not in map(str.lower, self.sampling_methods):
-                    await message.reply("Sampling method not found. Defaulting to \"Euler a\". Please make sure "
-                                        "sampler matches one of: \n" + ", ".join(self.sampling_methods))
-
-            if 'style1=' in word:
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
-                # i can remove the word from prompt_no_args
-                equalsind = word.index('=')
-                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                style = word.split("=")[1]
-                # remove quotation marks
-                style = style.replace('"', '')
-                for default_style in self.style_names:
-                    if default_style.lower() == style.lower():
-                        self.post_obj['styles'] = "[" + default_style + "]"
-                        break
-                if style.lower() not in map(str.lower, self.style_names):
-                    await message.reply(
-                        "Style name \"" + style + "\" not found. Ignoring this parameter. Please make sure "
-                                                  "style name matches one of: \n" + ", ".join(self.style_names))
-
-            if 'style2=' in word:
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
-                # i can remove the word from prompt_no_args
-                equalsind = word.index('=')
-                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                style = word.split("=")[1]
-                # remove quotation marks
-                style = style.replace('"', '')
-                for default_style in self.style_names:
-                    if default_style.lower() == style.lower():
-                        self.post_obj['data'][self.style2_ind] = default_style
-                        break
-                if style.lower() not in map(str.lower, self.style_names):
-                    await message.reply(
-                        "Style name \"" + style + "\" not found. Ignoring this parameter. Please make sure "
-                                                  "style name matches one of: \n" + ", ".join(self.style_names))
-
     async def add_attachment(self, url):
         try:
             img_bytes = requests.get(url).content
@@ -235,12 +189,12 @@ def loopback_args(loops, final=0.5, curve=1, interrogator=0):
 
 
 # generates the list of args for an xyz plot
-def xyz_plot_args(x_type, x_vals,
-                  y_type=0, y_vals='',
-                  z_type=0, z_vals=''):
-    return [x_type, x_vals, '',
-            y_type, y_vals, '',
-            z_type, z_vals, '',
+def xyz_plot_args(x_type,   x_vals='', x_vals_list=None,
+                  y_type=0, y_vals='', y_vals_list=None,
+                  z_type=0, z_vals='', z_vals_list=None):
+    return [x_type, x_vals, x_vals_list,
+            y_type, y_vals, y_vals_list,
+            z_type, z_vals, z_vals_list,
             True, False, False, False, 0]
 
 
