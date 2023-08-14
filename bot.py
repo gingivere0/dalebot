@@ -1,3 +1,4 @@
+import copy
 import discord
 import os
 from dotenv import load_dotenv
@@ -31,7 +32,7 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "steps=1-100, describes how many times the ai should run over the picture. Defaults to 30\n" \
              "res=1-1600x1-1600, describes the resolution of the image. Defaults to 1024x1024\n" \
              "dn=0-1, describes the denoising amount when generating based off an existing image. Higher means more " \
-             "changes. Defaults to 0.45\n" \
+             "changes. Defaults to 0.75\n" \
              "seed=0-very large number, describes the seed from which to begin generation. the same prompt with the " \
              "same seed will generate the same image.\n" \
              "\tseed is useful for making slight modifications to an image that you think is close to what you want\n" \
@@ -88,21 +89,30 @@ async def on_reaction_add(reaction, user):
 
         if reaction.emoji == "🔎":
             await reaction.message.add_reaction("🔄")
-            data_holder.setup(reaction.message)
+            data_holder.setup('')
             data_holder.is_upscale = True
             await data_holder.add_attachment(reaction.message.attachments[0].url)
+            await data_holder.wordparse()
             await postresponse(reaction.message)
             await reaction.message.remove_reaction("🔄", bot.user)
             await reaction.message.add_reaction("✅")
 
-        if reaction.emoji == "X🪩":
+        if reaction.emoji == "🪩":
             await reaction.message.add_reaction("🔄")
             parent_message = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
-            await on_message(parent_message)
-            await data_holder.add_attachment(reaction.message.attachments[0].url)
+            original_text = await get_original_message_text(parent_message)
+            data_holder.setup(original_text[len(TRIGGER) + 1:])
+            data_holder.is_disco = True
+            await data_holder.wordparse()
             await postresponse(reaction.message)
             await reaction.message.remove_reaction("🔄", bot.user)
             await reaction.message.add_reaction("✅")
+
+
+async def get_original_message_text(message):
+    if message.reference is not None:
+        return await get_original_message_text(await message.channel.fetch_message(message.reference.message_id))
+    return message.content
 
 
 # include prompts from the parent messages in the current prompt
@@ -155,7 +165,12 @@ async def on_message(message):
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
 async def postresponse(message):
-    print(data_holder.post_obj)
+    printable_po = copy.deepcopy(data_holder.post_obj)
+    if 'image' in printable_po:
+        printable_po.pop('image')
+    if 'init_images' in printable_po:
+        printable_po.pop('init_images')
+    print(printable_po)
     global s
     if log:
         with open("log/post_obj.json", "w") as f:
@@ -166,15 +181,19 @@ async def postresponse(message):
             f.write(json.dumps(r_json, indent=2))
 
     try:
-        seed = json.loads(r_json['info']).get('seed', 0)
-        if seed > 0:
+        if 'images' in r_json:
+            seed = json.loads(r_json['info']).get('seed', 0)
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
                 pic = discord.File(img_bytes, 'dale.png')
                 replied_message = await message.reply("seed=" + str(seed), file=pic)
             await replied_message.add_reaction("🎲")
             await replied_message.add_reaction("🔎")
-            # await replied_message.add_reaction("🪩")
-        elif not data_holder.is_model_change:
+            await replied_message.add_reaction("🪩")
+        elif 'image' in r_json:
+            with io.BytesIO(base64.b64decode(r_json['image'])) as img_bytes:
+                pic = discord.File(img_bytes, 'dale.png')
+                await message.reply(file=pic)
+        else:
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
                 pic = discord.File(img_bytes, 'dale.png')
                 await message.reply(file=pic)

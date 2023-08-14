@@ -11,6 +11,7 @@ SDXL_UNSUPPORTED_SAMPLERS = {'DDIM', 'PLMS', 'UniPC'}
 
 class DataHolder:
     def __init__(self):
+        self.is_disco = None
         self.arguments = []
         self.original_prompt = ""
         self.post_obj = None
@@ -20,8 +21,6 @@ class DataHolder:
         self.lora_names = []
         self.style_names = []
         self.sampler_names = []
-        self.model_names = []
-        self.is_model_change = False
         self.is_upscale = False
         self.attachment = None
         self.endpoint = '/sdapi/v1/txt2img'
@@ -34,14 +33,15 @@ class DataHolder:
             'width': 1024,
             'height': 1024,
             'steps': 30,
+            'sampler': 'DPM++ 2M SDE Karras',
             'styles': [],
             'save_images': True
         }
         self.denoise_bool = False
         self.reply_string = ""
         self.is_loopback = False
-        self.is_model_change = False
         self.is_upscale = False
+        self.is_disco = False
         self.attachment = None
         self.endpoint = '/sdapi/v1/txt2img'
 
@@ -68,14 +68,10 @@ class DataHolder:
         for s in samplers:
             if s['name'] not in SDXL_UNSUPPORTED_SAMPLERS:
                 self.sampler_names.append(s['name'])
-        print(self.sampler_names)
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self):
         for arg in self.arguments:
-            if arg[0] == 'model=':
-                print("change model")
-
             if arg[0] == 'hd=':
                 hd = arg[1]
                 if hd.isnumeric() and int(hd) <= 100:
@@ -133,7 +129,7 @@ class DataHolder:
 
             if arg[0] == 'sampler=':
                 sampler = arg[1].replace('"', '')
-                if arg[1].lower() == 'platter':
+                if arg[1].lower() == 'platter' and not self.is_disco:
                     self.post_obj['n_iter'] = 1
                     self.post_obj['script_name'] = 'x/y/z plot'
                     random_samplers = random.sample(self.sampler_names, 5)
@@ -141,38 +137,26 @@ class DataHolder:
                 elif sampler in self.sampler_names:
                     self.post_obj['sampler_name'] = sampler
 
+        # apply some random settings
+        if self.is_disco:
+            random_res = random.choice(SDXL_RES[:5])
+            resx = random_res.split("x")[0]
+            resy = random_res.split("x")[1]
+            self.post_obj['width'] = resx
+            self.post_obj['height'] = resy
+            self.post_obj['styles'] = [random.choice(self.style_names)]
+
         if self.attachment is not None:
             if self.is_upscale:
-                print('do upscale things')
+                self.post_obj = {
+                    'image': str(self.attachment)[2:-1],
+                    'upscaler_1': 'ESRGAN_4x',
+                    'save_images': True
+                }
+                self.endpoint = '/sdapi/v1/extra-single-image'
             else:
                 self.post_obj['init_images'] = [str(self.attachment)[2:-1]]
                 self.endpoint = '/sdapi/v1/img2img'
-
-    # removes parameters from the prompt and parses them accordingly
-    async def wordparseX(self, message):
-        for word in self.words:
-            if 'model=' in word:
-                # PayloadFormatter.do_format(self, PayloadFormatter.PayloadFormat.MODELCHANGE)
-                with open('modelchange.json') as f:
-                    self.post_obj = json.load(f)
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                # shlex pre-removed the quotation marks, which i don't want, so i'm adding them back in so
-                # i can remove the word from prompt_no_args
-                equalsind = word.index('=')
-                word = word[:equalsind + 1] + '"' + word[equalsind + 1:] + '"'
-                self.prompt_no_args = self.prompt_no_args.replace(word, "")
-                model = word.split("=")[1]
-                # remove quotation marks
-                model = model.replace('"', '')
-                self.is_model_change = True
-                for default_model in self.model_names:
-                    if default_model.lower().split(" [")[0] == model.lower() or default_model.lower() == model.lower():
-                        self.post_obj['data'][0] = model
-                        return
-                await message.reply(
-                    "Model name \"" + model + "\" not found. Please make sure "
-                                              "model name matches one of: \n" + ", ".join(self.model_names))
-                return
 
     async def add_attachment(self, url):
         try:
