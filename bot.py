@@ -17,7 +17,8 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("TOKEN")
 USERNAME = os.getenv("USER")
 PASSWORD = os.getenv("PASS")
-TRIGGER = os.getenv("TRIGGER")
+TRIGGER = "!dale" # default value
+SDXL = False # default value
 
 bot = discord.Client(intents=discord.Intents.all())
 
@@ -46,7 +47,6 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "\"cartoon\" has been set; remove that parameter otherwise):\n" \
              "!dale firetruck conform=20 num=4 steps=15 res=832x256 sampler=\"DPM2 a Karras\" {birds} " \
              "style1=\"cartoon\" "
-helpstring = helpstring.replace("!dale", TRIGGER)
 
 data_holder = DataHolder()
 s = requests.Session()
@@ -54,7 +54,7 @@ s = requests.Session()
 
 @bot.event
 async def on_ready():
-    global s
+    global s, helpstring
     if json.loads(s.get(url + '/config').content).get("detail") == "Not authenticated":
         headers = {"Connection": "keep-alive", "Host": "127.0.0.1:7860"}
         payload = {'username': USERNAME, 'password': PASSWORD}
@@ -67,6 +67,9 @@ async def on_ready():
                 os._exit(1)
         except Exception:
             pass
+
+    load_config()
+    helpstring = helpstring.replace("!dale", TRIGGER)
 
     Path("log").mkdir(parents=True, exist_ok=True)
     print(f'{bot.user} has logged in.')
@@ -133,6 +136,12 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
+    if message.content == '!d styles':
+        await message.reply(data_holder.list_styles())
+
+    if message.content == '!d loras':
+        await message.reply(data_holder.list_loras())
+
     if message.content[0:len(TRIGGER)] == TRIGGER:
         # get previous prompts if this message is a response to another message
         if message.reference is not None:
@@ -185,7 +194,8 @@ async def postresponse(message):
             seed = json.loads(r_json['info']).get('seed', 0)
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
                 pic = discord.File(img_bytes, 'dale.png')
-                replied_message = await message.reply("seed=" + str(seed), file=pic)
+                reply_text = data_holder.info + f'\nseed={str(seed)}'
+                replied_message = await message.reply(reply_text, file=pic)
             await replied_message.add_reaction("🎲")
             await replied_message.add_reaction("🔎")
             await replied_message.add_reaction("🪩")
@@ -211,6 +221,24 @@ async def load_available_settings():
     loras = s.get(url + '/sdapi/v1/loras').json()
     styles = s.get(url + '/sdapi/v1/prompt-styles').json()
     samplers = s.get(url + '/sdapi/v1/samplers').json()
-    data_holder.set_available_options(loras, styles, samplers)
+    loaded_settings = {}
+    try:
+        with open('install_specific_settings.json') as f:
+            loaded_settings = json.load(f)
+    except Exception as e:
+        print("Error loading install specific settings: ", e)
+
+    data_holder.set_available_options(loras, styles, samplers, loaded_settings)
+
+def load_config():
+    global TRIGGER, SDXL
+    vals = {}
+    try:
+        with open('config.json') as f:
+            vals = json.load(f)
+    except Exception as e:
+        print("Error loading config values: ", e)
+    TRIGGER = vals['trigger']
+    SDXL = vals['sdxl']
 
 bot.run(DISCORD_TOKEN)
