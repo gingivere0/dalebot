@@ -6,3 +6,4 @@ log/
 .bak
 .json
 output.png
+/install_specific_settings.json
