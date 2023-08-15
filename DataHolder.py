@@ -4,6 +4,7 @@ import re
 import requests
 import base64
 import random
+from Lora import Lora
 
 SDXL_RES = ("1024x1024", "1152x896", "896x1152", "1216x832", "832x1216", "1344x768", "768x1344", "1536x640", "640x1536")
 SDXL_UNSUPPORTED_SAMPLERS = {'DDIM', 'PLMS', 'UniPC'}
@@ -11,29 +12,36 @@ SDXL_UNSUPPORTED_SAMPLERS = {'DDIM', 'PLMS', 'UniPC'}
 
 class DataHolder:
     def __init__(self):
+        self.disco_styles = []
+        self.disco_loras = []
         self.is_disco = None
         self.arguments = []
         self.original_prompt = ""
+        self.prompt = ""
         self.post_obj = None
         self.denoise_bool = False
         self.reply_string = ""
         self.is_loopback = False
-        self.lora_names = []
+        self.loras = []
         self.style_names = []
+        self.disco_loras = []
+        self.disco_styles = []
         self.sampler_names = []
         self.is_upscale = False
         self.attachment = None
+        self.info = ''
         self.endpoint = '/sdapi/v1/txt2img'
 
     # reset to default values
     def reset(self):
         self.arguments = []
         self.original_prompt = ""
+        self.prompt = ""
         self.post_obj = {
             'width': 1024,
             'height': 1024,
             'steps': 30,
-            'sampler': 'DPM++ 2M SDE Karras',
+            'sampler_name': 'DPM++ 2M SDE Karras',
             'styles': [],
             'save_images': True
         }
@@ -43,6 +51,7 @@ class DataHolder:
         self.is_upscale = False
         self.is_disco = False
         self.attachment = None
+        self.info = ''
         self.endpoint = '/sdapi/v1/txt2img'
 
     def setup(self, message):
@@ -57,17 +66,33 @@ class DataHolder:
         negative = "" if len(negatives) == 0 else negatives[0]
         fragments = re.split(r'\s\w+=', self.original_prompt.replace(negative, ""))
         options = re.findall(r'(\w+=)', self.original_prompt)
-        self.post_obj['prompt'] = fragments[0]
+        self.prompt = fragments[0]
+        self.post_obj['prompt'] = self.prompt
         self.arguments = list(zip(options, fragments[1:]))
         if negative != "":
             self.arguments.append(('negative=', negative[1:-1]))
 
-    def set_available_options(self, loras, styles, samplers):
-        self.lora_names = [l['alias'] for l in loras]
-        self.style_names = [s['name'] for s in styles]
-        for s in samplers:
-            if s['name'] not in SDXL_UNSUPPORTED_SAMPLERS:
-                self.sampler_names.append(s['name'])
+    def set_available_options(self, loras, styles, samplers, settings):
+        for lora in loras:
+            self.loras.append(Lora(lora['name'], lora['alias']))
+        for style in styles:
+            if style['name'] != '':
+                self.style_names.append(style['name'])
+        for sampler in samplers:
+            if sampler['name'] not in SDXL_UNSUPPORTED_SAMPLERS:
+                self.sampler_names.append(sampler['name'])
+
+        if 'lora_settings' in settings:
+            for ls in settings['lora_settings']:
+                ls_lora = Lora.get_lora(ls['lora'])
+                if 'nickname' in ls:
+                    ls_lora.add_nickname(ls['nickname'])
+                if 'keyword' in ls:
+                    ls_lora.set_keyword(ls['keyword'])
+
+        if 'disco_options' in settings:
+            self.disco_loras = settings['disco_options']['loras']
+            self.disco_styles = settings['disco_options']['styles']
 
     # removes parameters from the prompt and parses them accordingly
     async def wordparse(self):
@@ -122,7 +147,7 @@ class DataHolder:
                 self.post_obj['script_name'] = 'loopback'
                 self.post_obj['script_args'] = loopback_args(int(arg[1]))
 
-            if arg[0] == 'style1=' or arg[0] == 'style2=':
+            if arg[0] == 'style1=' or arg[0] == 'style2=' or 'style=':
                 style = arg[1].replace('"', '')
                 if style in self.style_names:
                     self.post_obj['styles'].append(style)
@@ -137,6 +162,10 @@ class DataHolder:
                 elif sampler in self.sampler_names:
                     self.post_obj['sampler_name'] = sampler
 
+            if arg[0] == 'lora=':
+                if Lora.is_lora(arg[1]):
+                    self.post_obj['prompt'] = Lora.get_lora(arg[1]).apply(self.prompt)
+
         # apply some random settings
         if self.is_disco:
             random_res = random.choice(SDXL_RES[:5])
@@ -144,7 +173,15 @@ class DataHolder:
             resy = random_res.split("x")[1]
             self.post_obj['width'] = resx
             self.post_obj['height'] = resy
-            self.post_obj['styles'] = [random.choice(self.style_names)]
+
+            random_style = random.choice(self.disco_styles)
+            self.post_obj['styles'] = [random_style]
+            self.info = f'Style: {random_style}'
+
+            if random.random() > 0.5:
+                random_lora = Lora.get_lora(random.choice(self.disco_loras))
+                self.info = self.info + f', LoRA: {random_lora.nickname}'
+                self.post_obj['prompt'] = random_lora.apply(self.prompt)
 
         if self.attachment is not None:
             if self.is_upscale:
@@ -165,6 +202,14 @@ class DataHolder:
             print(e)
             return
         self.attachment = base64.b64encode(img_bytes)
+
+    def list_styles(self):
+        return ', '.join(self.style_names)
+
+    def list_loras(self):
+        if len(self.loras) > 0:
+            return ', '.join([l.nickname for l in self.loras])
+        return '0'
 
 
 # generates the list of args for a loopback
