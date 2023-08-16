@@ -1,5 +1,4 @@
 import copy
-import discord
 import os
 from dotenv import load_dotenv
 import requests
@@ -11,16 +10,22 @@ from DataHolder import DataHolder
 import io
 import base64
 
+import interactions
+from interactions import listen
+from interactions.api.events import MessageReactionAdd, MessageCreate
+from interactions.models.discord import Message
+
 BOT_NAME = "DaleBot"
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("TOKEN")
 USERNAME = os.getenv("USER")
 PASSWORD = os.getenv("PASS")
-TRIGGER = "!dale" # default value
-SDXL = False # default value
+TRIGGER = "!dale"  # default value
+SDXL = False  # default value
 
-bot = discord.Client(intents=discord.Intents.all())
+# bot = discord.Client(intents=discord.Intents.all())
+ibot = interactions.Client(intents=interactions.Intents.ALL)
 
 url = 'http://127.0.0.1:7860'
 
@@ -52,8 +57,8 @@ data_holder = DataHolder()
 s = requests.Session()
 
 
-@bot.event
-async def on_ready():
+@listen(interactions.api.events.Startup)
+async def on_startup():
     global s, helpstring
     if json.loads(s.get(url + '/config').content).get("detail") == "Not authenticated":
         headers = {"Connection": "keep-alive", "Host": "127.0.0.1:7860"}
@@ -72,80 +77,87 @@ async def on_ready():
     helpstring = helpstring.replace("!dale", TRIGGER)
 
     Path("log").mkdir(parents=True, exist_ok=True)
-    print(f'{bot.user} has logged in.')
+    print(f'{ibot.user} has logged in.')
 
     await load_available_settings()
 
 
 # reacting to a dalepost with "🎲" will prompt dale to reroll the prompt with a different seed
-@bot.event
-async def on_reaction_add(reaction, user):
-    if user == bot.user:
+@listen(MessageReactionAdd)
+async def on_message_reaction_add(event: MessageReactionAdd):
+    message = event.message
+    emoji = event.emoji
+    author = event.author
+    if author == ibot.user:
         return
-    if reaction.message.author == bot.user:
-        if reaction.emoji == "🎲":
-            await reaction.message.add_reaction("🔄")
-            parent_message = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
-            await on_message(parent_message)
-            await reaction.message.remove_reaction("🔄", bot.user)
-            await reaction.message.add_reaction("✅")
+    if message.author == ibot.user:
+        if emoji.name == "🎲":
+            await message.add_reaction("🔄")
+            parent_message = await message.channel.fetch_message(message.message_reference.message_id)
+            await handle_message(parent_message)
+            await message.remove_reaction("🔄", ibot.user)
+            await message.add_reaction("✅")
 
-        if reaction.emoji == "🔎":
-            await reaction.message.add_reaction("🔄")
+        if emoji.name == "🔎":
+            await message.add_reaction("🔄")
             data_holder.setup('')
             data_holder.is_upscale = True
-            await data_holder.add_attachment(reaction.message.attachments[0].url)
+            await data_holder.add_attachment(message.attachments[0].url)
             await data_holder.wordparse()
-            await postresponse(reaction.message)
-            await reaction.message.remove_reaction("🔄", bot.user)
-            await reaction.message.add_reaction("✅")
+            await postresponse(message)
+            await message.remove_reaction("🔄", ibot.user)
+            await message.add_reaction("✅")
 
-        if reaction.emoji == "🪩":
-            await reaction.message.add_reaction("🔄")
-            parent_message = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
+        if emoji.name == "🪩":
+            await message.add_reaction("🔄")
+            parent_message = await message.channel.fetch_message(message.message_reference.message_id)
             original_text = await get_original_message_text(parent_message)
             data_holder.setup(original_text[len(TRIGGER) + 1:])
             data_holder.is_disco = True
             await data_holder.wordparse()
-            await postresponse(reaction.message)
-            await reaction.message.remove_reaction("🔄", bot.user)
-            await reaction.message.add_reaction("✅")
+            await postresponse(message)
+            await message.remove_reaction("🔄", ibot.user)
+            await message.add_reaction("✅")
 
-        if reaction.emoji == "🖼️":
-            await reaction.message.add_reaction("🔄")
-            parent_message = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
+        if emoji.name == "🖼️":
+            await message.add_reaction("🔄")
+            parent_message = await message.channel.fetch_message(message.message_reference.message_id)
             original_text = await get_original_message_text(parent_message)
             data_holder.setup(original_text[len(TRIGGER) + 1:])
-            await data_holder.add_attachment(reaction.message.attachments[0].url)
+            await data_holder.add_attachment(message.attachments[0].url)
             data_holder.is_disco = True
             await data_holder.wordparse()
-            await postresponse(reaction.message)
-            await reaction.message.remove_reaction("🔄", bot.user)
-            await reaction.message.add_reaction("✅")
+            await postresponse(message)
+            await message.remove_reaction("🔄", ibot.user)
+            await message.add_reaction("✅")
 
 
-async def get_original_message_text(message):
-    if message.reference is not None:
-        return await get_original_message_text(await message.channel.fetch_message(message.reference.message_id))
+async def get_original_message_text(message: Message):
+    if message.message_reference is not None:
+        return await get_original_message_text(await message.channel.fetch_message(message.message_reference.message_id))
     return message.content
 
 
 # include prompts from the parent messages in the current prompt
-async def get_all_parent_contents(message):
+async def get_all_parent_contents(message: Message):
     if message.content[0:len(TRIGGER)] == TRIGGER:
         data_holder.reply_string = " " + message.content[len(TRIGGER) + 1:] + " " + data_holder.reply_string
 
     # recursively get prompts from all parent messages in this reply chain
-    if message.reference is not None:
-        await get_all_parent_contents(await message.channel.fetch_message(message.reference.message_id))
+    if message.message_reference is not None:
+        await get_all_parent_contents(await message.channel.fetch_message(message.message_reference.message_id))
 
 
-@bot.event
-async def on_message(message):
+@listen(MessageCreate)
+async def on_message(event: MessageCreate):
+    await handle_message(event.message)
+
+
+async def handle_message(message: Message):
     print(f'Message received: {message.content}')
 
     # ignore messages from the bot
-    if message.author == bot.user:
+    if message.author == ibot.user:
         return
 
     if message.content == '!d styles':
@@ -156,11 +168,11 @@ async def on_message(message):
 
     if message.content[0:len(TRIGGER)] == TRIGGER:
         # get previous prompts if this message is a response to another message
-        if message.reference is not None:
-            await get_all_parent_contents(await message.channel.fetch_message(message.reference.message_id))
+        if message.message_reference is not None:
+            await get_all_parent_contents(await message.channel.fetch_message(message.message_reference.message_id))
 
         await message.add_reaction("🔄")
-        await bot.change_presence(activity=discord.Game('🎨'))
+        await ibot.change_presence(activity='🎨')
 
         # set the default indices in case the previous prompt wasn't default
         data_holder.setup(message.content[len(TRIGGER) + 1:])
@@ -172,14 +184,15 @@ async def on_message(message):
 
         await postresponse(message)
 
-        await message.remove_reaction("🔄", bot.user)
+        await message.remove_reaction("🔄", ibot.user)
         await message.add_reaction("✅")
 
-        await bot.change_presence(activity=None)
+        await ibot.change_presence(activity=None)
 
         if (len(message.content[len(TRIGGER) + 1:].split()) > 0
                 and "help" in message.content[len(TRIGGER) + 1:].split()[0]):
             await message.channel.send(helpstring)
+
 
 
 # sends post_obj to the AI, gets a response,
@@ -205,7 +218,7 @@ async def postresponse(message):
         if 'images' in r_json:
             seed = json.loads(r_json['info']).get('seed', 0)
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
-                pic = discord.File(img_bytes, 'dale.png')
+                pic = interactions.models.discord.File(img_bytes, 'dale.png')
                 reply_text = data_holder.info + f'\nseed={str(seed)}'
                 replied_message = await message.reply(reply_text, file=pic)
             await replied_message.add_reaction("🎲")
@@ -214,14 +227,14 @@ async def postresponse(message):
             await replied_message.add_reaction("🖼️")
         elif 'image' in r_json:
             with io.BytesIO(base64.b64decode(r_json['image'])) as img_bytes:
-                pic = discord.File(img_bytes, 'dale.png')
+                pic = interactions.models.discord.File(img_bytes, 'dale.png')
                 await message.reply(file=pic)
         else:
             with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
-                pic = discord.File(img_bytes, 'dale.png')
+                pic = interactions.models.discord.File(img_bytes, 'dale.png')
                 await message.reply(file=pic)
     except Exception as e:
-        await message.remove_reaction("🔄", bot.user)
+        await message.remove_reaction("🔄", ibot.user)
         await message.add_reaction("❌")
         print(type(e))
         print(e)
@@ -243,6 +256,7 @@ async def load_available_settings():
 
     data_holder.set_available_options(loras, styles, samplers, loaded_settings)
 
+
 def load_config():
     global TRIGGER, SDXL
     vals = {}
@@ -254,4 +268,5 @@ def load_config():
     TRIGGER = vals['trigger']
     SDXL = vals['sdxl']
 
-bot.run(DISCORD_TOKEN)
+
+ibot.start(DISCORD_TOKEN)
