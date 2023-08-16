@@ -1,9 +1,13 @@
+import io
 import json
 import sys
 import re
 import requests
 import base64
 import random
+
+from PIL import Image
+
 from Lora import Lora
 
 SDXL_RES = ("1024x1024", "1152x896", "896x1152", "1216x832", "832x1216", "1344x768", "768x1344", "1536x640", "640x1536")
@@ -29,6 +33,7 @@ class DataHolder:
         self.sampler_names = []
         self.is_upscale = False
         self.attachment = None
+        self.attachment_size = None
         self.info = ''
         self.endpoint = '/sdapi/v1/txt2img'
 
@@ -51,6 +56,7 @@ class DataHolder:
         self.is_upscale = False
         self.is_disco = False
         self.attachment = None
+        self.attachment_size = None
         self.info = ''
         self.endpoint = '/sdapi/v1/txt2img'
 
@@ -168,11 +174,15 @@ class DataHolder:
 
         # apply some random settings
         if self.is_disco:
-            random_res = random.choice(SDXL_RES[:5])
-            resx = random_res.split("x")[0]
-            resy = random_res.split("x")[1]
-            self.post_obj['width'] = resx
-            self.post_obj['height'] = resy
+            if self.attachment is None:
+                random_res = random.choice(SDXL_RES[:5])
+                resx = random_res.split("x")[0]
+                resy = random_res.split("x")[1]
+                self.post_obj['width'] = resx
+                self.post_obj['height'] = resy
+            else:
+                self.post_obj['width'] = self.attachment_size[0]
+                self.post_obj['height'] = self.attachment_size[1]
 
             random_style = random.choice(self.disco_styles)
             self.post_obj['styles'] = [random_style]
@@ -201,6 +211,7 @@ class DataHolder:
         except Exception as e:
             print(e)
             return
+        self.attachment_size = Image.open(io.BytesIO(img_bytes)).size
         self.attachment = base64.b64encode(img_bytes)
 
     def list_styles(self):

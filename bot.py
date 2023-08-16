@@ -111,6 +111,18 @@ async def on_reaction_add(reaction, user):
             await reaction.message.remove_reaction("🔄", bot.user)
             await reaction.message.add_reaction("✅")
 
+        if reaction.emoji == "🖼️":
+            await reaction.message.add_reaction("🔄")
+            parent_message = await reaction.message.channel.fetch_message(reaction.message.reference.message_id)
+            original_text = await get_original_message_text(parent_message)
+            data_holder.setup(original_text[len(TRIGGER) + 1:])
+            await data_holder.add_attachment(reaction.message.attachments[0].url)
+            data_holder.is_disco = True
+            await data_holder.wordparse()
+            await postresponse(reaction.message)
+            await reaction.message.remove_reaction("🔄", bot.user)
+            await reaction.message.add_reaction("✅")
+
 
 async def get_original_message_text(message):
     if message.reference is not None:
@@ -199,6 +211,7 @@ async def postresponse(message):
             await replied_message.add_reaction("🎲")
             await replied_message.add_reaction("🔎")
             await replied_message.add_reaction("🪩")
+            await replied_message.add_reaction("🖼️")
         elif 'image' in r_json:
             with io.BytesIO(base64.b64decode(r_json['image'])) as img_bytes:
                 pic = discord.File(img_bytes, 'dale.png')
