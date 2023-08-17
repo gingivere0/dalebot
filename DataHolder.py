@@ -14,7 +14,7 @@ SDXL_UNSUPPORTED_SAMPLERS = {'DDIM', 'PLMS', 'UniPC'}
 
 
 class DataHolder:
-    def __init__(self):
+    def __init__(self, install_specific_settings=None):
         self.disco_styles = []
         self.disco_loras = []
         self.is_disco = None
@@ -35,6 +35,10 @@ class DataHolder:
         self.attachment_size = None
         self.info = ''
         self.endpoint = '/sdapi/v1/txt2img'
+
+        if install_specific_settings:
+            loras, styles, samplers, settings = install_specific_settings
+            self.set_available_options(loras, styles, samplers, settings)
 
     # reset to default values
     def reset(self):
