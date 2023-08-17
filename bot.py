@@ -11,7 +11,7 @@ import io
 import base64
 
 import interactions
-from interactions import listen
+from interactions import listen, slash_command, slash_option, OptionType, SlashContext
 from interactions.api.events import MessageReactionAdd, MessageCreate
 from interactions.models.discord import Message
 
@@ -19,13 +19,14 @@ BOT_NAME = "DaleBot"
 
 load_dotenv()
 DISCORD_TOKEN = os.getenv("TOKEN")
+GUILD_ID = os.getenv("GUILD_ID")
 USERNAME = os.getenv("USER")
 PASSWORD = os.getenv("PASS")
 TRIGGER = "!dale"  # default value
 SDXL = False  # default value
 
 # bot = discord.Client(intents=discord.Intents.all())
-ibot = interactions.Client(intents=interactions.Intents.ALL)
+ibot = interactions.Client(intents=interactions.Intents.ALL, debug_scope=GUILD_ID)
 
 url = 'http://127.0.0.1:7860'
 
@@ -53,9 +54,11 @@ helpstring = "Hi! For a simple request, you can type something like \"!dale fire
              "!dale firetruck conform=20 num=4 steps=15 res=832x256 sampler=\"DPM2 a Karras\" {birds} " \
              "style1=\"cartoon\" "
 
-data_holder = DataHolder()
+# data_holder = DataHolder()
 s = requests.Session()
 
+queue = []
+iss = None
 
 @listen(interactions.api.events.Startup)
 async def on_startup():
@@ -85,6 +88,7 @@ async def on_startup():
 # reacting to a dalepost with "🎲" will prompt dale to reroll the prompt with a different seed
 @listen(MessageReactionAdd)
 async def on_message_reaction_add(event: MessageReactionAdd):
+    data_holder = DataHolder(iss)
     message = event.message
     emoji = event.emoji
     author = event.author
@@ -104,7 +108,7 @@ async def on_message_reaction_add(event: MessageReactionAdd):
             data_holder.is_upscale = True
             await data_holder.add_attachment(message.attachments[0].url)
             await data_holder.wordparse()
-            await postresponse(message)
+            await postresponse(data_holder, message)
             await message.remove_reaction("🔄", ibot.user)
             await message.add_reaction("✅")
 
@@ -115,7 +119,7 @@ async def on_message_reaction_add(event: MessageReactionAdd):
             data_holder.setup(original_text[len(TRIGGER) + 1:])
             data_holder.is_disco = True
             await data_holder.wordparse()
-            await postresponse(message)
+            await postresponse(data_holder, message)
             await message.remove_reaction("🔄", ibot.user)
             await message.add_reaction("✅")
 
@@ -127,7 +131,7 @@ async def on_message_reaction_add(event: MessageReactionAdd):
             await data_holder.add_attachment(message.attachments[0].url)
             data_holder.is_disco = True
             await data_holder.wordparse()
-            await postresponse(message)
+            await postresponse(data_holder, message)
             await message.remove_reaction("🔄", ibot.user)
             await message.add_reaction("✅")
 
@@ -139,13 +143,13 @@ async def get_original_message_text(message: Message):
 
 
 # include prompts from the parent messages in the current prompt
-async def get_all_parent_contents(message: Message):
+async def get_all_parent_contents(data_holder: DataHolder, message: Message):
     if message.content[0:len(TRIGGER)] == TRIGGER:
         data_holder.reply_string = " " + message.content[len(TRIGGER) + 1:] + " " + data_holder.reply_string
 
     # recursively get prompts from all parent messages in this reply chain
     if message.message_reference is not None:
-        await get_all_parent_contents(await message.channel.fetch_message(message.message_reference.message_id))
+        await get_all_parent_contents(data_holder, await message.channel.fetch_message(message.message_reference.message_id))
 
 
 @listen(MessageCreate)
@@ -155,6 +159,7 @@ async def on_message(event: MessageCreate):
 
 async def handle_message(message: Message):
     print(f'Message received: {message.content}')
+    data_holder = DataHolder(iss)
 
     # ignore messages from the bot
     if message.author == ibot.user:
@@ -182,7 +187,7 @@ async def handle_message(message: Message):
 
         await data_holder.wordparse()
 
-        await postresponse(message)
+        await postresponse(data_holder, message)
 
         await message.remove_reaction("🔄", ibot.user)
         await message.add_reaction("✅")
@@ -194,11 +199,10 @@ async def handle_message(message: Message):
             await message.channel.send(helpstring)
 
 
-
 # sends post_obj to the AI, gets a response,
 # pulls the seed (if it exists) and the imgdata string from the response
 # responds to the message with the new image and the seed (if it exists)
-async def postresponse(message):
+async def postresponse(data_holder: DataHolder, message):
     printable_po = copy.deepcopy(data_holder.post_obj)
     if 'image' in printable_po:
         printable_po.pop('image')
@@ -241,9 +245,53 @@ async def postresponse(message):
         return
 
 
+# tons of duplicate code for quick txt2img slash command test
+@slash_command(name="dale", description="generate an image", nsfw=True)
+@slash_option(
+    name="prompt",
+    description="description of your image",
+    required=True,
+    opt_type=OptionType.STRING
+)
+@slash_option(
+    name="image",
+    description="image for img2img",
+    opt_type=OptionType.ATTACHMENT
+)
+async def txt2img(ctx: SlashContext, prompt: str, attachment: interactions.models.Attachment = None):
+    try:
+        global s
+        data_holder = DataHolder(iss)
+        data_holder.setup(prompt)
+
+        if attachment:
+            await data_holder.add_attachment(attachment.url)
+
+        await data_holder.wordparse()
+        await ctx.defer()
+
+        if log:
+            with open("log/post_obj.json", "w") as f:
+                f.write(json.dumps(data_holder.post_obj, indent=2))
+        r_json = s.post(url + data_holder.endpoint, json=data_holder.post_obj, timeout=300).json()
+        if log:
+            with open("log/responsejson.json", "w") as f:
+                f.write(json.dumps(r_json, indent=2))
+
+        with io.BytesIO(base64.b64decode(r_json['images'][0])) as img_bytes:
+            pic = interactions.models.discord.File(img_bytes, 'dale.png')
+            await ctx.send(content="dale is here", file=pic)
+    except Exception as e:
+        print("error", e)
+
+
+async def submit_request():
+    pass
+
+
 # retrieves loras, styles, and samplers
 async def load_available_settings():
-    global s
+    global s, iss
     loras = s.get(url + '/sdapi/v1/loras').json()
     styles = s.get(url + '/sdapi/v1/prompt-styles').json()
     samplers = s.get(url + '/sdapi/v1/samplers').json()
@@ -254,7 +302,9 @@ async def load_available_settings():
     except Exception as e:
         print("Error loading install specific settings: ", e)
 
-    data_holder.set_available_options(loras, styles, samplers, loaded_settings)
+    iss = (loras, styles, samplers, loaded_settings)
+
+    # data_holder.set_available_options(loras, styles, samplers, loaded_settings)
 
 
 def load_config():
